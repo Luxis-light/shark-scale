@@ -1,0 +1,5 @@
+package offlinewallet;
+
+class OfflineWalletTest {
+
+}
