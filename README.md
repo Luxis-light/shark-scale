@@ -20,6 +20,6 @@ Das System besteht aus drei Hauptkomponenten:
 * **Offline Wallet**: Verwaltet die privaten/öffentlichen Schlüssel und speichert die signierten Transaktionen sicher offline.
 * **Offline TX Creator**: Eine Komponente, die es dem Benutzer ermöglicht, Transaktionen zu erstellen und mithilfe der Offline Wallet zu signieren. Sie fungiert als Schnittstelle zwischen dem Benutzer und der Offline Wallet.
 * **Blockchain**: Repräsentiert das Zielnetzwerk, an das die signierten Transaktionen übermittelt werden. Die Kommunikation erfolgt nur, wenn der "issued if online"-Zustand erreicht ist.
-
+Das detaillierte Komponenten-Diagramm finden Sie hier: [Komponenten Diagramm](docs/uml/Komponenten%20Diagramm.jpg)
 ## Geplante Erweiterungen (Spätere Phasen)
 Security Aspekte: Detaillierte Betrachtung und Implementierung von Sicherheitsmechanismen für den privaten Schlüssel und die Transaktionsverarbeitung.
