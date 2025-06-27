@@ -1,0 +1,5 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+SharkScale,offlineTxCreator,SignedTransaction,3,0,0,0,1,0,1,0,1,0
+SharkScale,exeptions,PrivateKeyNotFoundExeption,4,0,0,0,2,0,1,0,1,0
+SharkScale,offlineWallet.keystorefile,KeystoreGenerator,6,3,0,0,1,1,1,1,1,1
+SharkScale,offlineWallet,OfflineWallet,25,60,4,2,6,16,4,6,1,6
