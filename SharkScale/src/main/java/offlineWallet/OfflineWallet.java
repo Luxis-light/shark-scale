@@ -12,7 +12,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Optional;
 
-public class OfflineWallet {
+public class OfflineWallet implements GetWallet {
+
+
+    @Override
+    public Credentials getCredentials() {
+        return this.credentials;
+    }
 
     private final Credentials credentials;
     private final GenerateKeystorefile generateKeystorefile;
