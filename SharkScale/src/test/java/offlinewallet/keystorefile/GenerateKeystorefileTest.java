@@ -2,7 +2,6 @@ package offlinewallet.keystorefile;
 
 import offlineWallet.OfflineWallet;
 import offlineWallet.keystorefile.GenerateKeystorefile;
-import offlineWallet.keystorefile.KeystoreGenerator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class GenerateKeystorefileTest {
-    private GenerateKeystorefile mockKeystoreGenerator;
+    private GenerateKeystorefile mockKeystoreGenerator; // Mock des INTERFACES
     private Credentials testCredentials;
     private OfflineWallet offlineWallet;
     private File tempDir;
@@ -33,8 +32,8 @@ class GenerateKeystorefileTest {
 
     @BeforeEach
     void setUp() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException {
-        // Erstelle Mock für das Interface
-        mockKeystoreGenerator = mock(KeystoreGenerator.class); // Mock die konkrete Implementierung
+        // Erstelle Mock für das Interface GenerateKeystorefile
+        mockKeystoreGenerator = mock(GenerateKeystorefile.class);
 
         // Erstelle Test-Credentials
         testCredentials = Credentials.create(Keys.createEcKeyPair());
@@ -46,7 +45,7 @@ class GenerateKeystorefileTest {
 
     @AfterEach
     void tearDown() throws IOException {
-        // Loscht das temprare Verzeichniss
+        // Löscht das temporäre Verzeichnis und dessen Inhalt
         if (tempDir.exists()) {
             Files.walk(tempDir.toPath())
                     .sorted(Comparator.reverseOrder())
@@ -58,15 +57,15 @@ class GenerateKeystorefileTest {
     @Test
     @DisplayName("Sollte eine neue Wallet erfolgreich generieren")
     void shouldGenerateNewWalletSuccessfully() {
-
         assertDoesNotThrow(() -> {
-            OfflineWallet offlineWallet = OfflineWallet.generateNewWallet();
-            assertNotNull(offlineWallet);
-            assertNotNull(offlineWallet.getHexadresse());
-            assertNotNull(offlineWallet.getPublicKey());
-            assertTrue(offlineWallet.getHexadresse().startsWith("0x"));
-            assertTrue(offlineWallet.getPublicKey().length() > 0);
-            System.out.println();
+            // Hier wird die statische Methode aufgerufen, die ihre eigene KeystoreGenerator-Implementierung verwendet
+            // Stelle sicher, dass OfflineWallet.generateNewWallet() die korrekte KeystoreGenerator-Implementierung initialisiert
+            OfflineWallet generatedOfflineWallet = OfflineWallet.generateNewWallet();
+            assertNotNull(generatedOfflineWallet);
+            assertNotNull(generatedOfflineWallet.getHexadresse());
+            assertNotNull(generatedOfflineWallet.getPublicKey());
+            assertTrue(generatedOfflineWallet.getHexadresse().startsWith("0x"));
+            assertTrue(generatedOfflineWallet.getPublicKey().length() > 0);
         });
     }
 
@@ -133,8 +132,16 @@ class GenerateKeystorefileTest {
     void shouldDelegateKeystoreGenerationToInjectedInterface() throws CipherException, IOException {
         // Arrange
         String expectedFilePath = tempDir.getAbsolutePath() + File.separator + "test_wallet_mock.json";
-        // Simulieren, dass der Mock-Generator einen Pfad zurückgibt, wenn er aufgerufen wird
-        when(mockKeystoreGenerator.generateKeystoreFile(eq(password), eq(testCredentials.getEcKeyPair()), eq(tempDir), eq(true)))
+
+        // Simulieren, dass der Mock-Generator einen Pfad zurückgibt, wenn er aufgerufen wird.
+        // Die Signatur von generateKeystoreFile ist jetzt (String password, ECKeyPair ecKeyPair, File destinationDirectory, String filename).
+        // Da exportWalletToKeystoreFile im Test mit 'null' für den Dateinamen aufgerufen wird, erwarten wir auch 'null' im Mock.
+        when(mockKeystoreGenerator.generateKeystoreFile(
+                eq(password),
+                eq(testCredentials.getEcKeyPair()),
+                eq(tempDir), // tempDir ist bereits File
+                eq(null) // <--- HIER KORRIGIERT: Erwartet null für den Dateinamen
+        ))
                 .thenReturn(expectedFilePath);
 
         // When
@@ -143,10 +150,12 @@ class GenerateKeystorefileTest {
 
         // Then
         assertEquals(expectedFilePath, returnedPath, "Der zurückgegebene Pfad sollte dem vom Mock entsprechen");
-        // Überprüfe, ob die Methode auf dem Mock tatsächlich aufgerufen wurde
-        verify(mockKeystoreGenerator).generateKeystoreFile(password, testCredentials.getEcKeyPair(), tempDir, true);
+        // Überprüfe, ob die Methode auf dem Mock tatsächlich mit den richtigen Parametern aufgerufen wurde
+        verify(mockKeystoreGenerator).generateKeystoreFile(
+                eq(password),
+                eq(testCredentials.getEcKeyPair()),
+                eq(tempDir),
+                eq(null)
+        );
     }
-
-
-
 }

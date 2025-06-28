@@ -104,7 +104,7 @@ public class OfflineWallet implements GetWallet {
                 password,
                 credentials.getEcKeyPair(),
                 destinationDirectory,
-                true
+                fileName
         );
     }
 
