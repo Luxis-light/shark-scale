@@ -15,10 +15,7 @@ import java.util.Optional;
 public class OfflineWallet implements GetWallet {
 
 
-    @Override
-    public Credentials getCredentials() {
-        return this.credentials;
-    }
+
 
     private final Credentials credentials;
     private final GenerateKeystorefile generateKeystorefile;
@@ -88,17 +85,6 @@ public class OfflineWallet implements GetWallet {
         return credentials.getEcKeyPair().getPublicKey().toString(16);
     }
 
-    /**
-     * Signiert eine RawTransaction intern mit dem privaten Schlüssel der Wallet.
-     * Der private Schlüssel wird dabei nicht nach außen gegeben.
-     *
-     * @param rawTransaction Die zu signierende Transaktion.
-     * @return Der signierte Transaktions-Hex-String, bereit zum Senden.
-     */
-    public String signTransaction(RawTransaction rawTransaction) {
-        byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
-        return Numeric.toHexString(signedMessage);
-    }
 
     /**
      * Exportiert die Wallet sicher in eine Keystore-Datei unter Verwendung des injizierten Generators.
@@ -121,6 +107,18 @@ public class OfflineWallet implements GetWallet {
                 true
         );
     }
+
+    @Override
+    public Credentials getCredentials() {
+        return this.credentials;
+    }
+
+    @Override
+    public String signTransaction(RawTransaction rawTransaction) {
+        byte[] signedMessage = TransactionEncoder.signMessage(rawTransaction, credentials);
+        return Numeric.toHexString(signedMessage);
+    }
+
 
 
 }
