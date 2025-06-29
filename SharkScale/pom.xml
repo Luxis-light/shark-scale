@@ -13,13 +13,13 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- Properties für Versionsnummern, um sie leichter zu verwalten -->
-    <junit.jupiter.version>5.10.2</junit.jupiter.version> <!-- Aktualisiert auf die neueste stabile JUnit 5 Version -->
+
+    <junit.jupiter.version>5.10.2</junit.jupiter.version>
     <mockito.version>5.12.0</mockito.version>
     <web3j.version>5.0.0</web3j.version>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <jacoco.version>0.8.11</jacoco.version> <!-- Aktuelle stabile JaCoCo-Version -->
+    <jacoco.version>0.8.11</jacoco.version>
   </properties>
 
   <dependencies>
@@ -77,7 +77,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.13.0</version> <!-- Aktualisiert auf neuere stabile Version -->
+        <version>3.13.0</version>
         <configuration>
           <source>${maven.compiler.source}</source>
           <target>${maven.compiler.target}</target>
@@ -87,13 +87,8 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.2.5</version> <!-- Aktualisiert auf neuere stabile Version -->
+        <version>3.2.5</version>
         <configuration>
-          <!-- JaCoCo Agent Argumente werden hier automatisch durch das JaCoCo Plugin eingefügt -->
-          <!-- Wenn du weiterhin Java 23 verwendest und Mockito/ByteBuddy-Probleme auftreten,
-               könntest du dies hier hinzufügen:
-          <argLine>@{argLine} -Dnet.bytebuddy.experimental</argLine>
-          -->
         </configuration>
       </plugin>
 
