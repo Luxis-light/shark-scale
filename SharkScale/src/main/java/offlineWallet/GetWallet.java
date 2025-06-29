@@ -42,4 +42,6 @@ public interface GetWallet {
      * @throws ExecutionException   falls ein Fehler bei der asynchronen Ausführung auftritt.
      */
     BigInteger fetchBalance(Web3j web3j) throws IOException, InterruptedException, ExecutionException;
+
+
 }

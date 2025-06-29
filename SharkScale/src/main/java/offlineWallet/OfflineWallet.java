@@ -77,9 +77,9 @@ public class OfflineWallet implements GetWallet {
      * @return die Hexadresse als String
      */
     public String getHexadresse() {
+
         return credentials.getAddress();
     }
-
     /**
      * Gibt den Public Key in einem String an
      *

@@ -7,12 +7,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
-import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Keys;
 import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.Request;
 import org.web3j.protocol.core.methods.response.EthBlockNumber;
+import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
+import org.web3j.utils.Numeric;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,56 +26,62 @@ import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public class OfflineTXCreatorTest {
 
-    // Instanzvariablen, damit sie in allen Testmethoden verfügbar sind
     private GenerateKeystorefile mockKeystoreGenerator;
     private Credentials testCredentials;
-    private GetWallet mockWallet; // Mock des GetWallet-Interfaces
-    private Web3j mockWeb3j; // Mock für Web3j
+    private GetWallet mockWallet;
+    private Web3j mockWeb3j;
     private OfflineTXCreator offlineTXCreator;
 
-
     @BeforeEach
-    public void setup() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException {
+    public void setup() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, IOException, ExecutionException, InterruptedException {
         System.out.println("DEBUG: --- Setup-Methode gestartet ---");
 
-        // Mock das GenerateKeystorefile Interface
         mockKeystoreGenerator = mock(GenerateKeystorefile.class);
         System.out.println("DEBUG: mockKeystoreGenerator erstellt. Ist es null? " + (mockKeystoreGenerator == null));
 
-        // Erstelle echte Credentials, da die Wallet reale Schlüssel braucht
         testCredentials = Credentials.create(Keys.createEcKeyPair());
         System.out.println("DEBUG: testCredentials erstellt. Adresse: " + testCredentials.getAddress());
 
-        // Mock das GetWallet Interface. Konfiguriere es so, dass es Test-Credentials zurückgibt
-        // und die Signierfunktion korrekt simuliert.
         mockWallet = mock(GetWallet.class);
         System.out.println("DEBUG: mockWallet erstellt. Ist es null? " + (mockWallet == null));
         when(mockWallet.getCredentials()).thenReturn(testCredentials);
         // Simuliert das Signieren einer Transaktion durch die Wallet.
-        // Verwendet die echte Signierlogik, aber über den Mock des Interfaces.
+        // WICHTIG: Verwende Numeric.toHexString, um den signierten Bytes-Array in einen Hex-String umzuwandeln.
         when(mockWallet.signTransaction(any(RawTransaction.class))).thenAnswer(invocation -> {
             RawTransaction rawTx = invocation.getArgument(0);
-            // Nutze hier die echte Signierfunktion von Web3j für die Simulation
-            return org.web3j.crypto.TransactionEncoder.signMessage(rawTx, testCredentials).toString();
+            return Numeric.toHexString(TransactionEncoder.signMessage(rawTx, testCredentials));
         });
 
-
-        // Mock die Web3j Instanz für Netzwerkinteraktionen (z.B. isOnline(), fetchCurrentGasPrice())
         mockWeb3j = mock(Web3j.class);
         System.out.println("DEBUG: mockWeb3j erstellt. Ist es null? " + (mockWeb3j == null));
 
-        // Erstelle den OfflineTXCreator mit dem gemockten Wallet und dem gemockten Web3j.
-        // HINWEIS: Der Konstruktor von OfflineTXCreator muss angepasst werden,
-        // um eine Web3j-Instanz zu akzeptieren: public OfflineTXCreator(GetWallet getWallet, Web3j web3j)
-        System.out.println("DEBUG: Versuche OfflineTXCreator zu instanziieren mit mockWallet und mockWeb3j...");
+        // Mocke den Nonce-Abruf für den Konstruktor
+        Request<String, EthGetTransactionCount> mockNonceRequest = mock(Request.class);
+        EthGetTransactionCount mockEthGetTransactionCountResponse = mock(EthGetTransactionCount.class);
+        doReturn(mockNonceRequest).when(mockWeb3j).ethGetTransactionCount(anyString(), eq(DefaultBlockParameterName.LATEST));
+        when(mockNonceRequest.send()).thenReturn(mockEthGetTransactionCountResponse);
+        when(mockEthGetTransactionCountResponse.getTransactionCount()).thenReturn(BigInteger.ZERO); // Standardmäßig Nonce 0 beim Start
+
+        // Mocke ethSendRawTransaction für sendBatch Test
+        Request<String, EthSendTransaction> mockSendTransactionRequest = mock(Request.class);
+        EthSendTransaction mockEthSendTransactionResponse = mock(EthSendTransaction.class);
+
+        // Verwende doReturn().when() für ethSendRawTransaction
+        doReturn(mockSendTransactionRequest).when(mockWeb3j).ethSendRawTransaction(anyString());
+        when(mockSendTransactionRequest.send()).thenReturn(mockEthSendTransactionResponse);
+        when(mockEthSendTransactionResponse.hasError()).thenReturn(false); // Standardmäßig kein Fehler beim Senden
+        when(mockEthSendTransactionResponse.getTransactionHash()).thenReturn("0xmockTransactionHash"); // Dummy-Hash
+
+        System.out.println("DEBUG: Versuche OfflineTXCreator zu instantiieren mit mockWallet und mockWeb3j...");
         offlineTXCreator = new OfflineTXCreator(mockWallet, mockWeb3j);
         System.out.println("DEBUG: OfflineTXCreator erfolgreich instanziiert.");
         System.out.println("DEBUG: --- Setup-Methode beendet ---");
@@ -81,28 +91,16 @@ public class OfflineTXCreatorTest {
     @Test
     @DisplayName("Sollte true zurückgeben, wenn das Netzwerk erreichbar ist (isOnline)")
     void testIsOnline_Positive() throws Exception {
-        // Arrange
-        // Web3j's ethBlockNumber() gibt ein Request-Objekt zurück, das dann .send() aufruft.
-        // Das .send() gibt dann ein EthBlockNumber-Objekt zurück.
-        // Spezifiziere den generischen Typ von Request korrekt
         Request<String, EthBlockNumber> mockRequest = mock(Request.class);
         EthBlockNumber mockedEthBlockNumberResponse = mock(EthBlockNumber.class);
 
-        // Konfiguriere den MockWeb3j, damit er ein mockRequest zurückgibt, wenn ethBlockNumber() aufgerufen wird
         doReturn(mockRequest).when(mockWeb3j).ethBlockNumber();
-        // Konfiguriere das mockRequest, damit es ein mockedEthBlockNumberResponse zurückgibt, wenn send() aufgerufen wird
         when(mockRequest.send()).thenReturn(mockedEthBlockNumberResponse);
-        // Stelle sicher, dass die Antwort kein Fehler ist
         when(mockedEthBlockNumberResponse.hasError()).thenReturn(false);
 
-
-        // Act
         boolean online = offlineTXCreator.isOnline();
 
-        // Assert
-        assertTrue(online,
-                "isOnline() sollte true zurückgeben bei erfolgreicher Verbindung.");
-        // Überprüfen, ob die Kette von Aufrufen tatsächlich stattgefunden hat
+        assertTrue(online, "isOnline() sollte true zurückgeben bei erfolgreicher Verbindung.");
         verify(mockWeb3j).ethBlockNumber();
         verify(mockRequest).send();
     }
@@ -110,89 +108,66 @@ public class OfflineTXCreatorTest {
     @Test
     @DisplayName("Sollte false zurückgeben, wenn das Netzwerk nicht erreichbar ist (isOnline)")
     void testIsOnline_Negative() throws Exception {
-        //Arrange
         Request<String, EthBlockNumber> mockRequest = mock(Request.class);
 
         doReturn(mockRequest).when(mockWeb3j).ethBlockNumber();
+        when(mockRequest.send()).thenThrow(new IOException("Simulierter Netzwerk Fehler"));
 
-        //Simulieren dass send() einen Fehler wirft
-        when(mockRequest.send()).thenThrow(new IOException("SPiele Netzwerk Fehler vor"));
-
-        //Act
         Boolean online = offlineTXCreator.isOnline();
 
-        //Assert
         assertFalse(online, "isOnline() sollte false zurückgeben," +
                 " weil die Netzwerkverbindung nicht aufgebaut wurde");
 
-        //Verify
         verify(mockWeb3j).ethBlockNumber();
         verify(mockRequest).send();
     }
 
     @Test
     @DisplayName("Sollte true zurückgeben, wenn Signierung klappt (createTransaction)")
-    void testCreateTransaction_SigningSuccess() {
-        //Arrange
-        String adresse = null;
-        try {
-            adresse = Credentials.create(ECKeyPair.create(Keys.createEcKeyPair().getPrivateKey())).getAddress();
-        } catch (InvalidAlgorithmParameterException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchProviderException e) {
-            throw new RuntimeException(e);
-        }
-        BigInteger nonce = BigInteger.ONE;
+    void testCreateTransaction_SigningSuccess() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+        String recipientAddress = Credentials.create(Keys.createEcKeyPair()).getAddress();
+
         BigInteger gasPrice = BigInteger.valueOf(987654321L);
         BigInteger gasLimit = BigInteger.valueOf(20000);
         BigInteger value = BigInteger.valueOf(123456789L);
         String data = null;
 
-        boolean success = offlineTXCreator.createTransaction(nonce, gasPrice, gasLimit, adresse, value, data);
+        assertEquals(BigInteger.ZERO, offlineTXCreator.getCurrentNonce(), "Initial Nonce sollte 0 sein.");
+
+        boolean success = offlineTXCreator.createTransaction(gasPrice, gasLimit, recipientAddress, value, data);
         assertTrue(success, "createTransaction() sollte bei Erfolg true zurückgeben.");
         assertFalse(offlineTXCreator.getSignedTransactions().isEmpty());
 
-        // Überprüfe, ob die Signierfunktion der Wallet aufgerufen wurde
+        assertEquals(BigInteger.ONE, offlineTXCreator.getCurrentNonce(), "Nonce sollte nach Transaktionserstellung inkrementiert werden.");
+
         verify(mockWallet).signTransaction(any(RawTransaction.class));
     }
 
     @Test
     @DisplayName("Sollte false zurückgeben, wenn Signierung fehlschlägt (createTransaction)")
-    void testCreateTransaction_SigningFailure() {
-        String adresse = null;
-        try {
-            adresse = Credentials.create(ECKeyPair.create(Keys.createEcKeyPair().getPrivateKey())).getAddress();
-        } catch (InvalidAlgorithmParameterException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchProviderException e) {
-            throw new RuntimeException(e);
-        }
-        BigInteger nonce = BigInteger.ONE;
+    void testCreateTransaction_SigningFailure() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException {
+        String recipientAddress = Credentials.create(Keys.createEcKeyPair()).getAddress();
+
         BigInteger gasPrice = BigInteger.valueOf(987654321L);
         BigInteger gasLimit = BigInteger.valueOf(20000);
         BigInteger value = BigInteger.valueOf(123456789L);
         String data = null;
 
-        //Simuliere Fehler bei der signierung
+        BigInteger initialNonce = offlineTXCreator.getCurrentNonce();
+
         when(mockWallet.signTransaction(any(RawTransaction.class)))
                 .thenThrow(new RuntimeException("Signierungsfehler simuliert"));
 
-        //Act
         boolean transactionSuccess = offlineTXCreator
-                .createTransaction(nonce, gasPrice, gasLimit, adresse, value, data);
+                .createTransaction(gasPrice, gasLimit, recipientAddress, value, data);
         boolean emptyTransactionList = this.offlineTXCreator.getSignedTransactions().isEmpty();
 
-        //Assert
         assertFalse(transactionSuccess,
                 "createTransaction() sollte false sein wenn die signierung fehlschlägt");
         assertTrue(emptyTransactionList,
                 "sollte true sein weil die Liste leer ist da die unerfolgreiche Transaktionen nicht hinzugefügt werden");
+        assertEquals(initialNonce, offlineTXCreator.getCurrentNonce(), "Nonce sollte bei Fehlschlag NICHT inkrementiert werden.");
 
-        //Verify
         verify(mockWallet).signTransaction(any(RawTransaction.class));
     }
 
@@ -202,25 +177,75 @@ public class OfflineTXCreatorTest {
         String testDir = "test_output";
         String testFilePath = testDir + "/signed_transactions_test.json";
 
-        // Verzeichnis anlegen, falls es nicht existiert
         Files.createDirectories(Paths.get(testDir));
 
-        //Arrange
-        offlineTXCreator
-                .createTransaction(BigInteger.ONE, BigInteger.TEN, BigInteger.valueOf(21000), "0xabc123abc123abc123abc123abc123abc123abc1", BigInteger.valueOf(1000), null);
+        offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), "0xabc123abc123abc123abc123abc123abc123abc1", BigInteger.valueOf(1000), null);
 
-        //Act
         offlineTXCreator.saveSignedTransactionsToJson(testFilePath);
 
-        //Assert
         File file = new File(testFilePath);
         assertTrue(file.exists(), "JSON sollte erstellt worden sein");
 
         String content = Files.readString(file.toPath());
-        assertTrue(content.contains("0x"));
+        assertTrue(content.contains("0x"), "Inhalt sollte '0x' für Hex-String enthalten.");
 
-        //Cleaning
-        file.delete();
+        Files.deleteIfExists(file.toPath());
+        Files.deleteIfExists(Paths.get(testDir));
     }
 
+    @Test
+    @DisplayName("resyncNonce sollte die aktuelle Nonce vom Netzwerk abrufen und setzen")
+    void testResyncNonce() throws IOException, InterruptedException, ExecutionException {
+        // Arrange
+        BigInteger expectedNonce = BigInteger.valueOf(10);
+
+        Request<String, EthGetTransactionCount> mockNonceRequest = mock(Request.class);
+        EthGetTransactionCount mockEthGetTransactionCountResponse = mock(EthGetTransactionCount.class);
+
+        // ZURÜCKSETZEN DES MOCKS, um nur die Aufrufe in diesem Test zu zählen
+        reset(mockWeb3j);
+        doReturn(mockNonceRequest).when(mockWeb3j).ethGetTransactionCount(eq(testCredentials.getAddress()), eq(DefaultBlockParameterName.LATEST));
+        when(mockNonceRequest.send()).thenReturn(mockEthGetTransactionCountResponse);
+        when(mockEthGetTransactionCountResponse.getTransactionCount()).thenReturn(expectedNonce);
+
+        // Act
+        offlineTXCreator.resyncNonce();
+
+        // Assert
+        assertEquals(expectedNonce, offlineTXCreator.getCurrentNonce(), "resyncNonce sollte die Nonce vom Netzwerk abrufen und aktualisieren.");
+        verify(mockWeb3j, times(1)).ethGetTransactionCount(eq(testCredentials.getAddress()), eq(DefaultBlockParameterName.LATEST));
+        verify(mockNonceRequest, times(1)).send();
+    }
+
+    @Test
+    @DisplayName("sendBatch sollte alle signierten Transaktionen senden und Hashes zurückgeben")
+    void testSendBatch() throws Exception {
+        // Arrange
+        // Mocks für sendSignedTransaction sind bereits im setup() konfiguriert
+        // Sie geben "0xmockTransactionHash" zurück
+
+        // Erzeuge zufällige Empfängeradressen korrekt:
+        String recipientAddress1 = Credentials.create(Keys.createEcKeyPair()).getAddress();
+        String recipientAddress2 = Credentials.create(Keys.createEcKeyPair()).getAddress();
+        String recipientAddress3 = Credentials.create(Keys.createEcKeyPair()).getAddress();
+
+        // Füge dem TXCreator signierte Transaktionen hinzu (Nonce wird intern inkrementiert)
+        offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), recipientAddress1, BigInteger.ONE, null);
+        offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), recipientAddress2, BigInteger.ONE, null);
+        offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), recipientAddress3, BigInteger.ONE, null);
+
+        // Act
+        ArrayList<String> sentHashes = offlineTXCreator.sendBatch(offlineTXCreator.getSignedTransactions());
+
+        // Assert
+        assertFalse(sentHashes.isEmpty(), "sendBatch sollte Hashes zurückgeben.");
+        assertEquals(3, sentHashes.size(), "Es sollten 3 Transaktions-Hashes zurückgegeben werden.");
+        // Prüfen, ob die richtigen Dummy-Hashes zurückgegeben wurden
+        assertTrue(sentHashes.stream().allMatch(h -> h.equals("0xmockTransactionHash")), "Alle Hashes sollten dem gemockten Wert entsprechen.");
+
+        // Überprüfen, ob sendSignedTransaction für jede Transaktion aufgerufen wurde
+        verify(offlineTXCreator, times(3)).sendSignedTransaction(anyString());
+
+        assertEquals(3, offlineTXCreator.getSignedTransactions().size(), "Interne Liste sollte unverändert bleiben, da Parameter übergeben.");
+    }
 }

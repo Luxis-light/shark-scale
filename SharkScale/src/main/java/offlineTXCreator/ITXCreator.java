@@ -12,7 +12,7 @@ public interface ITXCreator {
 	 * und speichert die signierte Transaktion intern in der Liste.
 	 * Diese Methode ersetzt die frühere 'createSignedTransaction'.
 	 *
-	 * @param nonce      Die Transaktions-Nonce (muss vom Absender verwaltet werden).
+
 	 * @param gasPrice   Der Gaspreis für die Transaktion (in Wei).
 	 * @param gasLimit   Das Gaslimit für die Transaktion.
 	 * @param to         Die Empfängeradresse.
@@ -20,6 +20,6 @@ public interface ITXCreator {
 	 * @param data       Optionales Datenfeld für die Transaktion (kann null oder leer sein).
 	 * @return Die signierte Transaktion als Hex-String.
 	 */
-	boolean createTransaction(BigInteger nonce, BigInteger gasPrice, BigInteger gasLimit, String to, BigInteger value, String data);
+	boolean createTransaction(BigInteger gasPrice, BigInteger gasLimit, String to, BigInteger value, String data);
 	
 }
