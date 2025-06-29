@@ -23,8 +23,8 @@ public class demo {
 
 
         // --- Wallets aus den exportierten Dateien laden ---
-        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("Falches Passwor", new File(exportedFilePath1), generateKeystorefile);
-        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("Falches Passwort", new File(exportedFilePath2), generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(exportedFilePath1), generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(exportedFilePath2), generateKeystorefile);
 
         if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
             OfflineWallet wallet1 = offlineWallet1Optional.get();
@@ -42,9 +42,9 @@ public class demo {
             System.out.println("Aktuelle Nonce für Wallet 2 (intern in txCreator2): " + txCreator2.getCurrentNonce());
 
 
-            BigInteger gasPrice = txCreator1.getCurrentGasPrice();
+            BigInteger gasPrice = txCreator1.fetchCurrentGasPrice();
             BigInteger gasLimit = BigInteger.valueOf(21000);
-            BigInteger valueToSend = new BigInteger("1000000000000000");
+            BigInteger valueToSend = new BigInteger("10000000000000");
 
             // --- Transaktionen von Wallet 2 zu Wallet 1 erstellen ---
             System.out.println("\nErstelle Transaktionen von Wallet 2 zu Wallet 1...");
@@ -71,6 +71,11 @@ public class demo {
             if (tx3Created) {
                 System.out.println("Dritte Transaktion von Wallet 2 erstellt.");
             }
+            boolean tx4Created = txCreator2.createTransaction(new BigInteger("2"), gasPrice, gasLimit, wallet1.getHexadresse(), valueToSend, null);
+            if (tx1Created) {
+                System.out.println("Erste Transaktion von Wallet 2 erstellt.");
+            }
+
 
             System.out.println("\nSignierte Transaktionen in der Liste von txCreator2:");
             txCreator2.getSignedTransactions().forEach(tx -> System.out.println("  " + tx.substring(0, Math.min(tx.length(), 70)) + "..."));
@@ -81,7 +86,7 @@ public class demo {
 
             System.out.println("\n============ Transaktionen werden gesendet =============");
             // Sende die Transaktionen, die in txCreator2 gesammelt wurden
-            List<String> transactionHashes = txCreator2.sendBatch(txCreator2.getSignedTransactions());
+            List<String> transactionHashes = txCreator2.sendBatch();
             transactionHashes.forEach(hash -> System.out.println("Gesendeter Transaktions-Hash: " + hash));
             System.out.println("========================================================\n");
 

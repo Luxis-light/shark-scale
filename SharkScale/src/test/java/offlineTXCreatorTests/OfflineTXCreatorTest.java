@@ -235,7 +235,7 @@ public class OfflineTXCreatorTest {
         offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), recipientAddress3, BigInteger.ONE, null);
 
         // Act
-        ArrayList<String> sentHashes = offlineTXCreator.sendBatch(offlineTXCreator.getSignedTransactions());
+        ArrayList<String> sentHashes = offlineTXCreator.sendBatch();
 
         // Assert
         assertFalse(sentHashes.isEmpty(), "sendBatch sollte Hashes zurückgeben.");

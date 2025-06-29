@@ -73,7 +73,6 @@ public class OfflineWallet implements GetWallet {
 
     /**
      * Gibt die Hexdresse in einem String an
-     *
      * @return die Hexadresse als String
      */
     public String getHexadresse() {
