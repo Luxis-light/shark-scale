@@ -3,14 +3,18 @@ package offlineWallet;
 import offlineWallet.keystorefile.GenerateKeystorefile;
 import offlineWallet.keystorefile.KeystoreGenerator;
 import org.web3j.crypto.*;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.utils.Numeric;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 public class OfflineWallet implements GetWallet {
 
@@ -119,6 +123,10 @@ public class OfflineWallet implements GetWallet {
         return Numeric.toHexString(signedMessage);
     }
 
+    @Override
+    public BigInteger fetchBalance(Web3j web3j) throws IOException, InterruptedException, ExecutionException {
+        return web3j.ethGetBalance(credentials.getAddress(), DefaultBlockParameterName.LATEST).send().getBalance();
+    }
 
 
 }
