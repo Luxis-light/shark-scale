@@ -12,8 +12,8 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
-public class demo {
-    public static void main(String[] args) throws Exception { // Allgemeine Exception für Einfachheit im Beispiel
+public class Demo2 {
+    public static void main(String[] args) throws Exception {
         Web3j web3j = Web3j.build(new HttpService("https://sepolia.drpc.org"));
 
         GenerateKeystorefile generateKeystorefile = new KeystoreGenerator();
@@ -80,15 +80,10 @@ public class demo {
                 System.out.println("Erste Transaktion von Wallet 2 erstellt.");
             }
 
-
-            System.out.println("\nSignierte Transaktionen in der Liste von txCreator2:");
-            txCreator2.getSignedTransactions().forEach(tx -> System.out.println("  " + tx.substring(0, Math.min(tx.length(), 70)) + "..."));
-
-            System.out.println("\nWallet-Stände vor dem Senden der Transaktionen:");
-            System.out.println("Wallet 1 (" + wallet1.getHexadresse() + ") Balance: " + wallet1.fetchBalance(web3j));
-            System.out.println("Wallet 2 (" + wallet2.getHexadresse() + ") Balance: " + wallet2.fetchBalance(web3j));
-
-
+            txCreator2.saveAndClearTransactionsToJson(new File("C:/savedtxs"), "gespeicherttest.json");
+            System.out.println("Warte 10 Sekunden um den Ordner anzuschauen");
+            Thread.sleep(20000);
+            txCreator2.loadTransactionsFromJsonAndDelete("C:/savedtxs/gespeicherttest.json");
             System.out.println("\n============ Transaktionen werden gesendet =============");
             // Sende die Transaktionen, die in txCreator2 gesammelt wurden
             List<String> transactionHashes = txCreator2.sendBatch();
@@ -116,5 +111,6 @@ public class demo {
             System.out.println("Web3j-Instanz heruntergefahren.");
         }
         System.out.println("--- Programmende ---");
+
     }
 }

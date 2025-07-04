@@ -1,8 +1,14 @@
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\demo.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\Demo2.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\demoprasenatationslayer\uidemo.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\demoprasenatationslayer\WalletViewController.java
 C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\exeptions\PrivateKeyNotFoundExeption.java
-C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTxCreator\INetworkConnection.java
-C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTxCreator\ITXCreator.java
-C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTxCreator\SignedTransaction.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTXCreator\INetworkConnection.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTXCreator\ITXCreator.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineTXCreator\OfflineTXCreator.java
 C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\GetWallet.java
 C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\keystorefile\GenerateKeystorefile.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\keystorefile\IKeystoreReader.java
 C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\keystorefile\KeystoreGenerator.java
+C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\keystorefile\Web3jKeystoreReader.java
 C:\Users\Luxis\IdeaProjects\shark-scale\SharkScale\src\main\java\offlineWallet\OfflineWallet.java

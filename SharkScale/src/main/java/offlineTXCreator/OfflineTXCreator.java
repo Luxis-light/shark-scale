@@ -2,6 +2,7 @@ package offlineTXCreator;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import offlineWallet.GetWallet;
 import org.jetbrains.annotations.NotNull;
 import org.web3j.crypto.RawTransaction;
@@ -10,9 +11,11 @@ import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.http.HttpService;
 
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -102,26 +105,82 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
     }
 
     /**
-     * Speichert die Liste der signierten Transaktionen (als Hex-Strings) als JSON in einer Datei.
-     * Die JSON-Ausgabe wird schön formatiert (pretty printed).
+     * Speichert die vollständige Liste der ausstehenden TransactionJob-Objekte als JSON in eine Datei.
+     * Diese Methode LEERT die Liste nach dem Speichern.
      *
-     * @param filePath Der vollständige Pfad zur Datei, in die gespeichert werden soll (z.B. "data/signed_transactions.json").
-     * @throws IOException Wenn beim Schreiben der Datei ein Fehler auftritt (z.B. Berechtigungsprobleme, Verzeichnis nicht gefunden).
+     * @param directory Das Verzeichnis, in dem die Datei gespeichert werden soll.
+     * @param filename  Der Name der zu erstellenden JSON-Datei.
+     * @throws IOException Wenn beim Schreiben der Datei ein Fehler auftritt.
      */
-    public void saveSignedTransactionsToJson(String filePath) throws IOException {
+    public void saveAndClearTransactionsToJson(File directory, String filename) throws IOException {
+        // 1. Speichere die vollständigen Job-Objekte, nicht nur die Hex-Strings.
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        // Hier speichern wir nur die signierten Hex-Strings
-        List<String> hexStringsToSave = new ArrayList<>();
-        for (TransactionJob job : this.pendingTransactionJobs) {
-            hexStringsToSave.add(job.signedHex);
-        }
-        String json = gson.toJson(hexStringsToSave);
+        String json = gson.toJson(this.pendingTransactionJobs);
 
-        try (FileWriter writer = new FileWriter(filePath)) {
+        // 2. Erstelle den Dateipfad auf die korrekte, plattformunabhängige Weise.
+        File finalFile = new File(directory, filename);
+
+        // Stelle sicher, dass das übergeordnete Verzeichnis existiert.
+        if (!directory.exists()) {
+            directory.mkdirs(); // Erstellt das Verzeichnis, falls es nicht existiert.
+        }
+        try (FileWriter writer = new FileWriter(finalFile)) {
             writer.write(json);
         }
-        System.out.println("Signierte Transaktionen erfolgreich in JSON gespeichert unter: " + filePath);
+
+        this.pendingTransactionJobs.clear();
+
+        System.out.println("Transaktions-Jobs erfolgreich in JSON gespeichert unter: " + finalFile.getAbsolutePath());
     }
+
+
+    /**
+     * Lädt eine Liste von TransactionJob-Objekten aus einer JSON-Datei, ersetzt damit
+     * die Liste der aktuell ausstehenden Transaktionen und löscht die Quelldatei
+     * nach dem erfolgreichen Laden.
+     * Die interne Nonce des Creators wird hierbei NICHT verändert.
+     *
+     * @param filePath Der vollständige Pfad zur JSON-Datei.
+     * @throws IOException Wenn beim Lesen oder Löschen der Datei ein Fehler auftritt.
+     */
+    public void loadTransactionsFromJsonAndDelete(String filePath) throws IOException {
+        File sourceFile = new File(filePath);
+
+        // Prüfen, ob die Datei überhaupt existiert, bevor wir versuchen, sie zu lesen.
+        if (!sourceFile.exists()) {
+            System.out.println("Datei nicht gefunden: " + filePath);
+            return;
+        }
+
+        Gson gson = new Gson();
+        Type transactionJobListType = new TypeToken<ArrayList<TransactionJob>>() {
+        }.getType();
+
+        try (Reader reader = new FileReader(sourceFile)) {
+            ArrayList<TransactionJob> loadedJobs = gson.fromJson(reader, transactionJobListType);
+
+            if (loadedJobs != null && !loadedJobs.isEmpty()) {
+                this.pendingTransactionJobs.clear();
+                this.pendingTransactionJobs.addAll(loadedJobs);
+                System.out.println(loadedJobs.size() + " Transaktions-Jobs erfolgreich aus " + filePath + " geladen.");
+
+            } else {
+                System.out.println("Keine Transaktions-Jobs in " + filePath + " gefunden oder Datei ist leer.");
+            }
+        }
+
+        // Jetzt, wo der Lesevorgang abgeschlossen ist, kann die Datei sicher gelöscht werden.
+        try {
+            Files.delete(Paths.get(filePath));
+            System.out.println("JSON-Datei erfolgreich gelöscht: " + filePath);
+        } catch (IOException e) {
+            System.err.println("Fehler beim Löschen der Datei: " + filePath);
+            // Wirf die Exception weiter, damit der aufrufende Code darauf reagieren kann.
+            throw e;
+        }
+    }
+
+
 
     /**
      * Gibt die aktuell von diesem TXCreator verwendete Nonce zurück.

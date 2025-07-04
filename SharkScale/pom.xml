@@ -29,10 +29,17 @@
       <version>${web3j.version}</version>
     </dependency>
 
+
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>
-      <version>24.0.1</version>
+      <version>21.0.2</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-fxml</artifactId>
+      <version>21.0.2</version>
     </dependency>
     <dependency>
       <groupId>com.google.code.gson</groupId>
@@ -85,6 +92,12 @@
 
 
   <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
     <plugins>
       <!-- Maven Compiler Plugin -->
       <plugin>
@@ -156,7 +169,13 @@
         <artifactId>javafx-maven-plugin</artifactId>
         <version>0.0.8</version>
         <configuration>
-          <mainClass>HelloFX</mainClass>
+          <mainClass>demoprasenatationslayer.uidemo</mainClass>
+          <options>
+            <option>--module-path</option>
+            <option>${project.build.directory}/lib</option>
+            <option>--add-modules</option>
+            <option>javafx.controls,javafx.fxml</option>
+          </options>
         </configuration>
       </plugin>
     </plugins>

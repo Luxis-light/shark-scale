@@ -175,21 +175,21 @@ public class OfflineTXCreatorTest {
     @DisplayName("saveSignedTransactionsToJson sollte korrektes JSON in eine Datei schreiben")
     void testSaveSignedTransactionsToJson() throws IOException {
         String testDir = "test_output";
-        String testFilePath = testDir + "/signed_transactions_test.json";
+        File testFilePath = new File(testDir);
+        String filename = "/signed_transactions_test.json";
 
         Files.createDirectories(Paths.get(testDir));
 
         offlineTXCreator.createTransaction(BigInteger.TEN, BigInteger.valueOf(21000), "0xabc123abc123abc123abc123abc123abc123abc1", BigInteger.valueOf(1000), null);
 
-        offlineTXCreator.saveSignedTransactionsToJson(testFilePath);
+        offlineTXCreator.saveAndClearTransactionsToJson(testFilePath, filename);
 
-        File file = new File(testFilePath);
-        assertTrue(file.exists(), "JSON sollte erstellt worden sein");
+        assertTrue(testFilePath.exists(), "JSON sollte erstellt worden sein");
 
-        String content = Files.readString(file.toPath());
+        String content = Files.readString(testFilePath.toPath());
         assertTrue(content.contains("0x"), "Inhalt sollte '0x' für Hex-String enthalten.");
 
-        Files.deleteIfExists(file.toPath());
+        Files.deleteIfExists(testFilePath.toPath());
         Files.deleteIfExists(Paths.get(testDir));
     }
 

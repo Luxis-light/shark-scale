@@ -1,8 +1,7 @@
-offlineTxCreator\INetworkConnection.class
-offlineTxCreator\ITXCreator.class
+exeptions\PrivateKeyNotFoundExeption.class
+offlineTXCreator\INetworkConnection.class
 offlineWallet\keystorefile\KeystoreGenerator.class
 offlineWallet\OfflineWallet.class
 offlineWallet\GetWallet.class
 offlineWallet\keystorefile\GenerateKeystorefile.class
-exeptions\PrivateKeyNotFoundExeption.class
-offlineTxCreator\SignedTransaction.class
+offlineTXCreator\ITXCreator.class
