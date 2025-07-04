@@ -1,7 +1,9 @@
 import offlineTXCreator.OfflineTXCreator;
 import offlineWallet.OfflineWallet;
 import offlineWallet.keystorefile.GenerateKeystorefile;
+import offlineWallet.keystorefile.IKeystoreReader;
 import offlineWallet.keystorefile.KeystoreGenerator;
+import offlineWallet.keystorefile.Web3jKeystoreReader;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.http.HttpService;
 
@@ -20,11 +22,12 @@ public class demo {
         // Diese Pfade sind fest kodiert und müssen auf deinem System existieren.
         String exportedFilePath1 = "C://BlockchainKey/UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
         String exportedFilePath2 = "C://BlockchainKey/Ichbincool.js";
+        IKeystoreReader iKeystoreReader = new Web3jKeystoreReader();
 
 
         // --- Wallets aus den exportierten Dateien laden ---
-        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(exportedFilePath1), generateKeystorefile);
-        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(exportedFilePath2), generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(exportedFilePath1), iKeystoreReader, generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(exportedFilePath2), iKeystoreReader, generateKeystorefile);
 
         if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
             OfflineWallet wallet1 = offlineWallet1Optional.get();

@@ -3,6 +3,7 @@ package offlineTXCreator;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import offlineWallet.GetWallet;
+import org.jetbrains.annotations.NotNull;
 import org.web3j.crypto.RawTransaction;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
@@ -225,6 +226,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         return web3j.ethGasPrice().send().getGasPrice();
     }
 
+
     /**
      * Sendet einen Batch von intern gespeicherten, bereits signierten Transaktionen an das Ethereum-Netzwerk.
      * Bei einem Nonce-Fehler wird versucht, die Transaktion mit einer aktualisierten Nonce neu zu signieren und zu senden.
@@ -249,48 +251,62 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
             } catch (RuntimeException e) { // Fang die RuntimeException von sendSignedTransaction
                 System.err.println("Fehler beim Senden einer Transaktion (erste Versuch): " + job.signedHex + ": " + e.getMessage());
 
-                // Überprüfe, ob es ein Nonce-Fehler ist
-                if (e.getMessage() != null && (e.getMessage().contains("nonce too low") || e.getMessage().contains("already known") || e.getMessage().contains("invalid nonce"))) {
-                    System.out.println("Nonce-Fehler erkannt. Versuche Nonce zu synchronisieren und Transaktion neu zu signieren.");
-                    try {
-                        this.resyncNonce(); // Nonce aktualisieren
-
-                        // Erstelle RawTransaction mit der NEUEN Nonce
-                        RawTransaction rawTransactionToResign;
-                        if (job.data != null && !job.data.isEmpty()) {
-                            rawTransactionToResign = RawTransaction.createTransaction(this.currentNonce, job.gasPrice, job.gasLimit, job.to, job.value, job.data);
-                        } else {
-                            rawTransactionToResign = RawTransaction.createEtherTransaction(this.currentNonce, job.gasPrice, job.gasLimit, job.to, job.value);
-                        }
-                        // Neu signieren
-                        String reSignedTxHex = getWallet.signTransaction(rawTransactionToResign);
-                        job.signedHex = reSignedTxHex; // Aktualisiere den signierten Hex im Job
-
-                        // Erneuten Sendeversuch
-                        String txHash = sendSignedTransaction(job.signedHex);
-                        transactionHashes.add(txHash);
-                        System.out.println("Transaktion nach Nonce-Korrektur gesendet: " + txHash);
-
-                        // WICHTIG: Nonce auch nach erfolgreichem Re-Try inkrementieren
-                        // Diese Zeile sollte eigentlich in createTransaction sein, aber
-                        // wenn wir hier re-signieren, müssen wir die Nonce-Kette manuell fortführen.
-                        // Alternativ könnte createTransaction die Nonce NICHT inkrementieren
-                        // und sendBatch die Verantwortung dafür übernehmen.
-                        // Für diesen Ansatz inkrementieren wir die Nonce hier nach einem erfolgreichen Re-Try.
-                        this.currentNonce = this.currentNonce.add(BigInteger.ONE);
-
-
-                    } catch (Exception retryEx) {
-                        System.err.println("FEHLER: Transaktion nach Nonce-Korrektur immer noch fehlgeschlagen: " + job.signedHex + ": " + retryEx.getMessage());
-                        // Hier könnte man den Job zu einer "failedTransactions"-Liste hinzufügen
-                    }
-                } else {
-                    // Anderer, nicht-Nonce-bezogener Fehler
-                    System.err.println("FEHLER: Nicht-Nonce-bezogener Transaktionsfehler: " + job.signedHex + ": " + e.getMessage());
-                }
+                correction(job, e, transactionHashes);
             }
         }
         return transactionHashes;
+    }
+
+
+    private void correction(TransactionJob job, RuntimeException e, ArrayList<String> transactionHashes) {
+        // Überprüfe, ob es ein Nonce-Fehler ist
+        if (e.getMessage() != null && (e.getMessage().contains("nonce too low") || e.getMessage().contains("already known") || e.getMessage().contains("invalid nonce"))) {
+            System.out.println("Nonce-Fehler erkannt. Versuche Nonce zu synchronisieren und Transaktion neu zu signieren.");
+            try {
+                this.resyncNonce(); // Nonce aktualisieren
+
+                // Erstelle RawTransaction mit der NEUEN Nonce
+                RawTransaction rawTransactionToResign = getRawTransaction(job);
+                // Neu signieren
+                String reSignedTxHex = getWallet.signTransaction(rawTransactionToResign);
+                job.signedHex = reSignedTxHex; // Aktualisiere den signierten Hex im Job
+
+                retryTx(job, transactionHashes);
+
+            } catch (Exception retryEx) {
+                System.err.println("FEHLER: Transaktion nach Nonce-Korrektur immer noch fehlgeschlagen: " + job.signedHex + ": " + retryEx.getMessage());
+                // Hier könnte man den Job zu einer "failedTransactions"-Liste hinzufügen
+            }
+        } else {
+            // Anderer, nicht-Nonce-bezogener Fehler
+            System.err.println("FEHLER: Nicht-Nonce-bezogener Transaktionsfehler: " + job.signedHex + ": " + e.getMessage());
+        }
+    }
+
+    private void retryTx(TransactionJob job, ArrayList<String> transactionHashes) throws Exception {
+        // Erneuten Sendeversuch
+        String txHash = sendSignedTransaction(job.signedHex);
+        transactionHashes.add(txHash);
+        System.out.println("Transaktion nach Nonce-Korrektur gesendet: " + txHash);
+
+        // WICHTIG: Nonce auch nach erfolgreichem Re-Try inkrementieren
+        // Diese Zeile sollte eigentlich in createTransaction sein, aber
+        // wenn wir hier re-signieren, müssen wir die Nonce-Kette manuell fortführen.
+        // Alternativ könnte createTransaction die Nonce NICHT inkrementieren
+        // und sendBatch die Verantwortung dafür übernehmen.
+        // Für diesen Ansatz inkrementieren wir die Nonce hier nach einem erfolgreichen Re-Try.
+        this.currentNonce = this.currentNonce.add(BigInteger.ONE);
+    }
+
+    @NotNull
+    private RawTransaction getRawTransaction(TransactionJob job) {
+        RawTransaction rawTransactionToResign;
+        if (job.data != null && !job.data.isEmpty()) {
+            rawTransactionToResign = RawTransaction.createTransaction(this.currentNonce, job.gasPrice, job.gasLimit, job.to, job.value, job.data);
+        } else {
+            rawTransactionToResign = RawTransaction.createEtherTransaction(this.currentNonce, job.gasPrice, job.gasLimit, job.to, job.value);
+        }
+        return rawTransactionToResign;
     }
 
     /**

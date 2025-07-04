@@ -1,6 +1,7 @@
 package offlineWallet;
 
 import offlineWallet.keystorefile.GenerateKeystorefile;
+import offlineWallet.keystorefile.IKeystoreReader;
 import offlineWallet.keystorefile.KeystoreGenerator;
 import org.web3j.crypto.*;
 import org.web3j.protocol.Web3j;
@@ -49,22 +50,21 @@ public class OfflineWallet implements GetWallet {
     }
 
     /**
-     * Lädt eine Wallet aus einer Keystore-Datei mit einem Passwort.
-     * Diese Methode ist statisch, da sie keine bestehende OfflineWallet-Instanz benötigt,
-     * sondern eine neue erzeugt. Sie ist auch nicht Teil des GenerateKeystorefile-Interfaces,
-     * da dieses nur für die Generierung (Speicherung) zuständig ist, nicht für das Laden.
+     * Lädt eine Wallet aus einer Keystore-Datei unter Verwendung eines spezifischen Readers.
+     * Diese Methode ist nun flexibel für verschiedene Keystore-Formate.
      *
-     * @param password          Das Passwort zur Entschlüsselung des Keystore.
-     * @param sourceFile        Die Keystore-Datei.
-     * @param keystoreGenerator Eine Implementierung des GenerateKeystorefile-Interfaces,
-     *                          die für die *zukünftige* Speicherung der geladenen Wallet verwendet wird.
+     * @param password             Das Passwort zur Entschlüsselung des Keystore.
+     * @param sourceFile           Die Keystore-Datei.
+     * @param keystoreReader       Die Implementierung, die zum Lesen der Datei verwendet wird.
+     * @param keystoreGenerator    Eine Implementierung, die für zukünftige Speicherungen verwendet wird.
      * @return Eine Optional, die die OfflineWallet enthält, wenn sie erfolgreich geladen wurde.
      * @throws CipherException Wenn beim Entschlüsseln ein Fehler auftritt.
      * @throws IOException     Wenn beim Lesen der Datei ein Fehler auftritt.
      */
-    public static Optional<OfflineWallet> loadWalletFromKeystore(String password, File sourceFile, GenerateKeystorefile keystoreGenerator)
+    public static Optional<OfflineWallet> loadWalletFromKeystore(String password, File sourceFile, IKeystoreReader keystoreReader, GenerateKeystorefile keystoreGenerator)
             throws CipherException, IOException {
-        Credentials loadedCredentials = org.web3j.crypto.WalletUtils.loadCredentials(password, sourceFile);
+        // Die Ladelogik wird an den übergebenen Reader delegiert
+        Credentials loadedCredentials = keystoreReader.loadCredentials(password, sourceFile);
         if (loadedCredentials != null) {
             return Optional.of(new OfflineWallet(loadedCredentials, keystoreGenerator));
         }
