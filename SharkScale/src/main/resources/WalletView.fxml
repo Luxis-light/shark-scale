@@ -39,7 +39,7 @@
                                 <Label layoutX="25.0" layoutY="30.0" text="Von (Sender):"/>
                                 <ComboBox fx:id="senderComboBox" layoutX="150.0" layoutY="26.0" prefWidth="150.0"/>
                                 <Label layoutX="25.0" layoutY="70.0" text="An (Empfänger):"/>
-                                <TextField fx:id="recipientAddressField" editable="false" layoutX="150.0" layoutY="66.0"
+                                <TextField fx:id="recipientAddressField" editable="true" layoutX="150.0" layoutY="66.0"
                                            prefWidth="350.0"/>
                                 <Label layoutX="25.0" layoutY="110.0" text="Betrag (in Wei):"/>
                                 <TextField fx:id="amountField" layoutX="150.0" layoutY="106.0" text="10000000000000"/>
