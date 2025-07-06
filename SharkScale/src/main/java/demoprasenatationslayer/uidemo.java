@@ -29,7 +29,7 @@ public class uidemo extends Application {
             primaryStage.setScene(scene);
 
             // Verhindert, dass die Fenstergröße geändert werden kann
-            primaryStage.setResizable(false);
+            primaryStage.setResizable(true);
 
             // Zeigt das Fenster an
             primaryStage.show();

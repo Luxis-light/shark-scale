@@ -57,7 +57,10 @@ public class Demo2 {
             if (tx1Created) {
                 System.out.println("Erste Transaktion von Wallet 2 erstellt.");
             }
-
+            boolean tx4Created = txCreator2.createTransaction(new BigInteger("2"), gasPrice, gasLimit, wallet1.getHexadresse(), valueToSend, null);
+            if (tx4Created) {
+                System.out.println("Erste Transaktion von Wallet 2 erstellt.");
+            }
 
             boolean tx2Created = txCreator2.createTransaction(gasPrice, gasLimit, wallet1.getHexadresse(), valueToSend, null
             );
@@ -75,10 +78,7 @@ public class Demo2 {
             if (tx3Created) {
                 System.out.println("Dritte Transaktion von Wallet 2 erstellt.");
             }
-            boolean tx4Created = txCreator2.createTransaction(new BigInteger("2"), gasPrice, gasLimit, wallet1.getHexadresse(), valueToSend, null);
-            if (tx4Created) {
-                System.out.println("Erste Transaktion von Wallet 2 erstellt.");
-            }
+
 
             txCreator2.saveAndClearTransactionsToJson(new File("C:/savedtxs"), "gespeicherttest.json");
             System.out.println("Warte 10 Sekunden um den Ordner anzuschauen");

@@ -14,6 +14,8 @@ import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
@@ -24,6 +26,12 @@ public class OfflineWallet implements GetWallet {
 
     private final Credentials credentials;
     private final GenerateKeystorefile generateKeystorefile;
+
+
+    private final List<BalanceObserver> observers = new ArrayList<>();
+    private BigInteger lastKnownBalance;
+
+
 
     public OfflineWallet(Credentials credentials, GenerateKeystorefile keystoreGenerator) {
         if (credentials == null) {
@@ -47,6 +55,23 @@ public class OfflineWallet implements GetWallet {
         System.out.println("Neue Wallet generiert: " + newCredentials.getAddress());
 
         return new OfflineWallet(newCredentials, new KeystoreGenerator());
+    }
+
+
+    // NEU: Methoden zum Hinzufügen und Entfernen von Observern
+    public void addBalanceObserver(BalanceObserver observer) {
+        observers.add(observer);
+    }
+
+    public void removeBalanceObserver(BalanceObserver observer) {
+        observers.remove(observer);
+    }
+
+
+    private void notifyObservers() throws IOException, InterruptedException, ExecutionException {
+        for (BalanceObserver observer : observers) {
+            observer.updateBalance(this.lastKnownBalance);
+        }
     }
 
     /**
@@ -122,9 +147,18 @@ public class OfflineWallet implements GetWallet {
         return Numeric.toHexString(signedMessage);
     }
 
+
     @Override
     public BigInteger fetchBalance(Web3j web3j) throws IOException, InterruptedException, ExecutionException {
-        return web3j.ethGetBalance(credentials.getAddress(), DefaultBlockParameterName.LATEST).send().getBalance();
+        BigInteger newBalance = web3j.ethGetBalance(credentials.getAddress(), DefaultBlockParameterName.LATEST).send().getBalance();
+
+        // Nur benachrichtigen, wenn sich der Kontostand tatsächlich geändert hat
+        if (!newBalance.equals(this.lastKnownBalance)) {
+            this.lastKnownBalance = newBalance;
+            System.out.println("Neuer Kontostand für " + getHexadresse() + ": " + newBalance);
+            notifyObservers(); // Alle Beobachter informieren!
+        }
+        return newBalance;
     }
 
 
