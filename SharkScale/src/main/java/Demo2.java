@@ -20,14 +20,14 @@ public class Demo2 {
 
         // Hinweis: Es wird angenommen, dass die Keystore-Dateien unter diesen Pfaden existieren.
         // Diese Pfade sind fest kodiert und müssen auf deinem System existieren.
-        String exportedFilePath1 = "C://BlockchainKey/UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
-        String exportedFilePath2 = "C://BlockchainKey/Ichbincool.js";
+        String exportedFilePath1 = "C://Users//Eric M//Documents//decSys//BCKeystore//testWallet.json";
+        String exportedFilePath2 = "C://Users//Eric M//Documents//decSys//BCKeystore//anotherTestWallet.json";
         IKeystoreReader iKeystoreReader = new Web3jKeystoreReader();
 
 
         // --- Wallets aus den exportierten Dateien laden ---
-        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(exportedFilePath1), iKeystoreReader, generateKeystorefile);
-        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(exportedFilePath2), iKeystoreReader, generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1111", new File(exportedFilePath1), iKeystoreReader, generateKeystorefile);
+        Optional<OfflineWallet> offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("9999", new File(exportedFilePath2), iKeystoreReader, generateKeystorefile);
 
         if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
             OfflineWallet wallet1 = offlineWallet1Optional.get();

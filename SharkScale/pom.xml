@@ -170,12 +170,12 @@
         <version>0.0.8</version>
         <configuration>
           <mainClass>demoprasenatationslayer.uidemo</mainClass>
-          <options>
-            <option>--module-path</option>
+          <!--<options>
+            <option>-module-path</option>
             <option>${project.build.directory}/lib</option>
-            <option>--add-modules</option>
+            <option>-add-modules</option>
             <option>javafx.controls,javafx.fxml</option>
-          </options>
+          </options> -->
         </configuration>
       </plugin>
     </plugins>

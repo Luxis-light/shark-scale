@@ -51,6 +51,8 @@
                                                 text="Wallets laden"/>
                                         <Button fx:id="refreshBalanceButton" onAction="#refreshBalances"
                                                 text="Guthaben aktualisieren"/>
+                                        <Button fx:id="closeSharkScaleButton" onAction="#closeSharkScale"
+                                                text="Beende SharkScale"/>
                                     </children>
                                 </HBox>
                             </children>

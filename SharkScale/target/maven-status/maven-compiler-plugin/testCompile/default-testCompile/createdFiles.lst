@@ -1,2 +1,3 @@
 offlinewallet\keystorefile\GenerateKeystorefileTest.class
+offlineTXCreatorTests\OfflineTXCreatorTest.class
 offlinewallet\OfflineWalletTest.class

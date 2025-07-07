@@ -9,6 +9,7 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 import offlineTXCreator.OfflineTXCreator;
 import offlineWallet.BalanceObserver;
@@ -52,6 +53,8 @@ public class WalletViewController implements BalanceObserver {
     private TextField amountField;
     @FXML
     private Button createTransactionButton;
+    @FXML
+    private Button closeSharkScaleButton;
 
     @FXML
     private Label statusLabel;
@@ -83,11 +86,11 @@ public class WalletViewController implements BalanceObserver {
             IKeystoreReader iKeystoreReader = new Web3jKeystoreReader();
             GenerateKeystorefile generateKeystorefile = new KeystoreGenerator();
 
-            String wallet1FilePath = "C://BlockchainKey/UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
-            String wallet2FilePath = "C://BlockchainKey//Ichbincool.js";
+            String wallet1FilePath = "C://Users//Eric M//Documents//decSys//BCKeystore//testWallet.json";
+            String wallet2FilePath = "C://Users//Eric M//Documents//decSys//BCKeystore//anotherTestWallet.json";
 
-            offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(wallet1FilePath), iKeystoreReader, generateKeystorefile);
-            offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(wallet2FilePath), iKeystoreReader, generateKeystorefile);
+            offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1111", new File(wallet1FilePath), iKeystoreReader, generateKeystorefile);
+            offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("9999", new File(wallet2FilePath), iKeystoreReader, generateKeystorefile);
 
             if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
                 OfflineWallet wallet1 = offlineWallet1Optional.get();
@@ -121,6 +124,7 @@ public class WalletViewController implements BalanceObserver {
         uploadButton.setDisable(disable);
         saveTxButton.setDisable(disable);
         sendBatchButton.setDisable(disable);
+        closeSharkScaleButton.setDisable(disable);
     }
 
     private void setupTransactionTable() {
@@ -267,6 +271,21 @@ public class WalletViewController implements BalanceObserver {
         System.out.println("Manuelle Aktualisierung getriggert.");
         if (offlineWallet1Optional.isPresent()) offlineWallet1Optional.get().fetchBalance(web3j);
         if (offlineWallet2Optional.isPresent()) offlineWallet2Optional.get().fetchBalance(web3j);
+    }
+
+    @FXML
+    void closeSharkScale() {
+        System.out.println("Schließe SharkScale...");
+        disableControls(true);
+
+        if (web3j != null) {
+            web3j.shutdown();
+        }
+
+        Stage stage = (Stage) closeSharkScaleButton.getScene().getWindow();
+        stage.close();
+        Platform.exit();
+        System.exit(0);
     }
 
     @FXML
