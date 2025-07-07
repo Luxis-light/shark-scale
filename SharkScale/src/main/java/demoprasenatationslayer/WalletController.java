@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-public class WalletViewController implements BalanceObserver {
+public class WalletController implements BalanceObserver {
 
     // FXML-Felder aus allen Tabs
     @FXML
@@ -86,11 +86,11 @@ public class WalletViewController implements BalanceObserver {
             IKeystoreReader iKeystoreReader = new Web3jKeystoreReader();
             GenerateKeystorefile generateKeystorefile = new KeystoreGenerator();
 
-            String wallet1FilePath = "C://Users//Eric M//Documents//decSys//BCKeystore//testWallet.json";
-            String wallet2FilePath = "C://Users//Eric M//Documents//decSys//BCKeystore//anotherTestWallet.json";
+            String wallet1FilePath = "/Users/kacper/Studium/04_Semester/Dezentralisierte Systeme/Offline Wallet/Wallets/UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
+            String wallet2FilePath = "/Users/kacper/Studium/04_Semester/Dezentralisierte Systeme/Offline Wallet/Wallets/Ich bin cool.json";
 
-            offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1111", new File(wallet1FilePath), iKeystoreReader, generateKeystorefile);
-            offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("9999", new File(wallet2FilePath), iKeystoreReader, generateKeystorefile);
+            offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(wallet1FilePath), iKeystoreReader, generateKeystorefile);
+            offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(wallet2FilePath), iKeystoreReader, generateKeystorefile);
 
             if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
                 OfflineWallet wallet1 = offlineWallet1Optional.get();
@@ -101,6 +101,8 @@ public class WalletViewController implements BalanceObserver {
 
                 txCreator1 = new OfflineTXCreator(wallet1, web3j);
                 txCreator2 = new OfflineTXCreator(wallet2, web3j);
+
+                loadWallets();
 
                 setSenderComboBox();
                 recipientAddressField.setText("0x");

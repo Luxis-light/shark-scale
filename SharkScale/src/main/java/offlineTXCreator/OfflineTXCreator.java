@@ -196,7 +196,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         return ethSendTransaction.getTransactionHash();
     }
 
-    public void saveAndClearTransactionsToJson(File directory, String filename) throws IOException {
+    public boolean saveAndClearTransactionsToJson(File directory, String filename) throws IOException {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(this.pendingTransactionJobs);
         File finalFile = new File(directory, filename);
@@ -208,17 +208,18 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         }
         this.pendingTransactionJobs.clear();
         System.out.println("Transaktions-Jobs erfolgreich in JSON gespeichert unter: " + finalFile.getAbsolutePath());
+        return true;
     }
 
     public BigInteger fetchCurrentGasPrice() throws IOException {
         return web3j.ethGasPrice().send().getGasPrice();
     }
 
-    public void loadTransactionsFromJsonAndDelete(String filePath) throws IOException {
+    public boolean loadTransactionsFromJsonAndDelete(String filePath) throws IOException {
         File sourceFile = new File(filePath);
         if (!sourceFile.exists()) {
             System.out.println("Datei nicht gefunden: " + filePath);
-            return;
+            return false;
         }
         Gson gson = new Gson();
         Type transactionJobListType = new TypeToken<ArrayList<TransactionJob>>() {
@@ -236,6 +237,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         try {
             Files.delete(Paths.get(filePath));
             System.out.println("JSON-Datei erfolgreich gelöscht: " + filePath);
+            return true;
         } catch (IOException e) {
             System.err.println("Fehler beim Löschen der Datei: " + filePath);
             throw e;
@@ -267,4 +269,5 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
             String signedHex
     ) {
     }
+
 }
