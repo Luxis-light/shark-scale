@@ -24,10 +24,7 @@ import org.web3j.protocol.http.HttpService;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 public class WalletController implements BalanceObserver {
@@ -76,6 +73,8 @@ public class WalletController implements BalanceObserver {
     private OfflineTXCreator txCreator1;
     private OfflineTXCreator txCreator2;
     private OfflineTXCreator activeTxCreatorForTable;
+    private final Map<String, OfflineTXCreator> txCreators = new HashMap<>();
+    private final List<OfflineTXCreator.TransactionJob> allPendingJobs = new ArrayList<>();
 
     @FXML
     private void initialize() {
@@ -86,8 +85,8 @@ public class WalletController implements BalanceObserver {
             IKeystoreReader iKeystoreReader = new Web3jKeystoreReader();
             GenerateKeystorefile generateKeystorefile = new KeystoreGenerator();
 
-            String wallet1FilePath = "/Users/kacper/Studium/04_Semester/Dezentralisierte Systeme/Offline Wallet/Wallets/UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
-            String wallet2FilePath = "/Users/kacper/Studium/04_Semester/Dezentralisierte Systeme/Offline Wallet/Wallets/Ich bin cool.json";
+            String wallet1FilePath = "C://BlockchainKey//UTC--2025-06-28T19-11-19.583110000Z--0295d8a45fab22cb581896a5996171dc9148a074.json";
+            String wallet2FilePath = "C://BlockchainKey//Ichbincool.json";
 
             offlineWallet1Optional = OfflineWallet.loadWalletFromKeystore("1234", new File(wallet1FilePath), iKeystoreReader, generateKeystorefile);
             offlineWallet2Optional = OfflineWallet.loadWalletFromKeystore("6778371", new File(wallet2FilePath), iKeystoreReader, generateKeystorefile);
@@ -95,7 +94,8 @@ public class WalletController implements BalanceObserver {
             if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
                 OfflineWallet wallet1 = offlineWallet1Optional.get();
                 OfflineWallet wallet2 = offlineWallet2Optional.get();
-
+                txCreators.put(wallet1.getHexadresse().toLowerCase(), txCreator1);
+                txCreators.put(wallet2.getHexadresse().toLowerCase(), txCreator2);
                 wallet1.addBalanceObserver(this);
                 wallet2.addBalanceObserver(this);
 
@@ -116,6 +116,7 @@ public class WalletController implements BalanceObserver {
             e.printStackTrace();
             disableControls(true);
         }
+
     }
 
     private void disableControls(boolean disable) {
@@ -353,28 +354,47 @@ public class WalletController implements BalanceObserver {
     }
 
     @FXML
-    void sendTransactionBatch() {
+    void sendTransactionBatch() throws IOException, ExecutionException, InterruptedException {
         System.out.println("Button 'Alle Transaktionen senden' geklickt.");
 
-        if (activeTxCreatorForTable == null) {
-            statusLabel.setText("Fehler: Bitte zuerst Transaktionen für eine Wallet laden.");
-            return;
-        }
-
-        if (activeTxCreatorForTable.getPendingTransactionJobs().isEmpty()) {
+        if (allPendingJobs.isEmpty()) {
             statusLabel.setText("Keine ausstehenden Transaktionen zum Senden vorhanden.");
             return;
         }
 
-        try {
-            ArrayList<String> sentHashes = activeTxCreatorForTable.sendBatch();
-            statusLabel.setText(sentHashes.size() + " Transaktion(en) erfolgreich gesendet!");
-            transactionTableView.getItems().clear();
-            refreshBalances();
-        } catch (Exception e) {
-            statusLabel.setText("Fehler beim Senden: " + e.getMessage());
-            e.printStackTrace();
+        List<String> successfulHashes = new ArrayList<>();
+        List<OfflineTXCreator.TransactionJob> failedJobs = new ArrayList<>();
+
+        // Kopie der Liste zur Iteration erstellen, um sie währenddessen zu modifizieren
+        List<OfflineTXCreator.TransactionJob> jobsToProcess = new ArrayList<>(allPendingJobs);
+
+        for (OfflineTXCreator.TransactionJob job : jobsToProcess) {
+            // Finde den richtigen Creator für diesen Job
+            OfflineTXCreator responsibleCreator = txCreators.get(job.ownerAdress().toLowerCase());
+
+            if (responsibleCreator != null) {
+                try {
+                    // Eine neue Methode im Creator, die nur einen Job sendet
+                    // Wir simulieren das hier, indem wir die Batch-Logik mit einer Liste von einem Element füttern
+                    responsibleCreator.getPendingTransactionJobs().add(job); // Temporär hinzufügen
+                    ArrayList<String> resultHashes = responsibleCreator.sendBatch(); // sendBatch korrigiert jetzt nur diesen einen Job
+                    successfulHashes.addAll(resultHashes);
+                    allPendingJobs.remove(job); // Bei Erfolg aus der globalen Liste entfernen
+                } catch (Exception e) {
+                    failedJobs.add(job);
+                    System.err.println("Fehler beim Senden von Job mit Nonce " + job.nonce() + ": " + e.getMessage());
+                    // Wichtig: Den Job nicht aus der globalen Liste entfernen, damit er erneut versucht werden kann
+                }
+            } else {
+                failedJobs.add(job);
+                System.err.println("Kein passender Wallet-Creator für Transaktion von " + job.ownerAdress() + " gefunden.");
+            }
         }
+
+        // UI aktualisieren
+        transactionTableView.setItems(FXCollections.observableArrayList(allPendingJobs));
+        statusLabel.setText(successfulHashes.size() + " Transaktion(en) erfolgreich gesendet. " + failedJobs.size() + " fehlgeschlagen.");
+        refreshBalances();
     }
 
     @FXML
