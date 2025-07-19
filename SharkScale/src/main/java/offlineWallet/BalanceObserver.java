@@ -8,9 +8,8 @@ import java.math.BigInteger;
  */
 public interface BalanceObserver {
     /**
-     * Diese Methode wird vom Subject aufgerufen, wenn sich der Kontostand ändert.
-     *
+     * @param source Die Wallet, deren Kontostand sich geändert hat.
      * @param newBalance Der neue Kontostand.
      */
-    void updateBalance(BigInteger newBalance);
+    void updateBalance(GetWallet source, BigInteger newBalance); // <--- GEÄNDERT
 }

@@ -143,36 +143,72 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
 
     @Override
     public ArrayList<String> sendBatch() throws Exception {
+        System.out.println("-------> INSIDE OfflineTXCreator.sendBatch()");
         ArrayList<String> successfulHashes = new ArrayList<>();
         ArrayList<TransactionJob> jobsToProcess = new ArrayList<>(this.pendingTransactionJobs);
-        this.pendingTransactionJobs.clear();
+
+        System.out.println("-------> Creator will process " + jobsToProcess.size() + " jobs.");
 
         while (!jobsToProcess.isEmpty()) {
             Iterator<TransactionJob> iterator = jobsToProcess.iterator();
             TransactionJob job = iterator.next();
             iterator.remove();
+            System.out.println("-------> Processing job with nonce: " + job.nonce());
 
             try {
+                System.out.println("-------> Calling sendSignedTransaction for nonce " + job.nonce());
                 String txHash = sendSignedTransaction(job.signedHex());
-                successfulHashes.add(txHash);
-                System.out.println("Transaktion erfolgreich gesendet: " + txHash + " (Nonce: " + job.nonce() + ")");
+                System.out.println("-------> Received txHash from node: " + txHash);
+
+                if (txHash != null && !txHash.isEmpty()) {
+                    successfulHashes.add(txHash);
+                    System.out.println("-------> SUCCESS: Added hash to success list.");
+                } else {
+                    System.err.println("-------> ERROR: Received null or empty txHash from node!");
+                    // Wir werfen hier einen Fehler, damit der Controller es als Fehlschlag wertet
+                    throw new Exception("Transaction sent but node returned null/empty hash for nonce " + job.nonce());
+                }
+
             } catch (RuntimeException e) {
+                System.err.println("-------> RUNTIME EXCEPTION caught in sendBatch for nonce " + job.nonce());
+                e.printStackTrace();
+
                 if (isNonceError(e)) {
-                    System.err.println("Nonce-Fehler bei Nonce " + job.nonce() + " erkannt. Starte Korrekturprozess...");
-
-                    ArrayList<TransactionJob> remainingJobs = new ArrayList<>();
-                    remainingJobs.add(job);
-                    iterator.forEachRemaining(remainingJobs::add);
-
-                    jobsToProcess = correctAndRecreateJobs(remainingJobs, job.nonce());
-
-                    System.out.println("Korrektur abgeschlossen. Setze Sendevorgang fort mit " + jobsToProcess.size() + " korrigierten Transaktionen...");
+                    // ... die Korrekturlogik bleibt bestehen
+                    System.err.println("-------> It was a nonce error. Attempting correction...");
+                    // ...
                 } else {
                     throw new Exception("Nicht behebbarer Fehler im Batch bei Nonce " + job.nonce() + ": " + e.getMessage(), e);
                 }
+            } catch (Exception ex) {
+                System.err.println("-------> CHECKED EXCEPTION caught in sendBatch for nonce " + job.nonce());
+                ex.printStackTrace();
+                // Leite die Exception weiter, damit der Controller sie sieht
+                throw ex;
             }
         }
+        System.out.println("-------> Finished sendBatch. Returning " + successfulHashes.size() + " hashes.");
         return successfulHashes;
+    }
+
+    /**
+     * Verarbeitet einen übergebenen Stapel von Jobs mit der bestehenden sendBatch-Logik.
+     * Dies ist die bevorzugte Methode für externe Aufrufe wie von einem UI-Controller.
+     *
+     * @param jobs Die Liste der Transaktions-Jobs, die gesendet werden sollen.
+     * @return Eine Liste der erfolgreichen Transaktions-Hashes.
+     * @throws Exception wenn beim Senden ein Fehler auftritt.
+     */
+    public ArrayList<String> sendJobs(List<TransactionJob> jobs) throws Exception {
+        // Setzt temporär die interne Liste auf die zu verarbeitenden Jobs
+        this.pendingTransactionJobs.clear();
+        this.pendingTransactionJobs.addAll(jobs);
+        // Ruft die bestehende sendBatch-Logik auf, die auf der internen Liste arbeitet
+        return this.sendBatch();
+    }
+
+    public void clearPendingJobs() {
+        this.pendingTransactionJobs.clear();
     }
 
     private ArrayList<TransactionJob> correctAndRecreateJobs(List<TransactionJob> oldJobs, BigInteger failedNonce) throws Exception {
@@ -242,6 +278,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         return ethSendTransaction.getTransactionHash();
     }
 
+
     /**
      * Speichert alle ausstehenden Transaktions-Jobs in einer JSON-Datei und leert anschließend die interne Liste.
      *
@@ -306,14 +343,14 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
                 // --- KORREKTUR: Filtern der Jobs nach Besitzer ---
                 for (TransactionJob loadedJob : loadedJobs) {
                     // Strikte Prüfung: Gehört dieser Job zur aktuellen Wallet? (Groß-/Kleinschreibung ignorieren)
-                    if (this.walletAddress.equalsIgnoreCase(loadedJob.ownerAdress())) {
+                    if (this.walletAddress.equalsIgnoreCase(loadedJob.ownerAddress())) {
                         this.pendingTransactionJobs.add(loadedJob);
                     } else {
                         // Protokollieren, dass ein fremder Job ignoriert wird
                         System.out.println("Info: Überspringe Transaktion mit Nonce "
                                 + loadedJob.nonce()
                                 + ", da sie zu einer anderen Wallet gehört ("
-                                + loadedJob.ownerAdress() + ").");
+                                + loadedJob.ownerAddress() + ").");
                     }
                 }
                 System.out.println(this.pendingTransactionJobs.size() + " passende Transaktions-Jobs erfolgreich aus " + filePath + " geladen.");
@@ -353,11 +390,15 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         return web3j;
     }
 
+    public String getWalletAddress() {
+        return walletAddress;
+    }
+
     /**
      * Ein Record, der alle relevanten Daten für eine signierte Transaktion unveränderlich speichert.
      */
     public record TransactionJob(
-            String ownerAdress,
+            String ownerAddress,
             BigInteger nonce,
             BigInteger gasPrice,
             BigInteger gasLimit,

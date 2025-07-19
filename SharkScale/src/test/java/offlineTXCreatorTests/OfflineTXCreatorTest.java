@@ -116,7 +116,7 @@ public class OfflineTXCreatorTest {
         assertEquals(1, offlineTXCreator.getPendingTransactionJobs().size(), "Es sollte nur eine Transaktion geladen werden.");
 
         OfflineTXCreator.TransactionJob loadedJob = offlineTXCreator.getPendingTransactionJobs().get(0);
-        assertEquals(ownAddress.toLowerCase(), loadedJob.ownerAdress().toLowerCase(), "Die geladene Transaktion muss die eigene Adresse als Besitzer haben.");
+        assertEquals(ownAddress.toLowerCase(), loadedJob.ownerAddress().toLowerCase(), "Die geladene Transaktion muss die eigene Adresse als Besitzer haben.");
         assertEquals(ownJob.signedHex(), loadedJob.signedHex(), "Der signierte Hex-String der geladenen Transaktion muss korrekt sein.");
 
         assertFalse(testFile.exists(), "Die Quelldatei sollte nach dem Laden gelöscht werden.");
@@ -136,8 +136,8 @@ public class OfflineTXCreatorTest {
         assertEquals(1, offlineTXCreator.getPendingTransactionJobs().size());
         OfflineTXCreator.TransactionJob createdJob = offlineTXCreator.getPendingTransactionJobs().get(0);
 
-        assertNotNull(createdJob.ownerAdress(), "ownerAddress darf nicht null sein.");
-        assertEquals(testCredentials.getAddress().toLowerCase(), createdJob.ownerAdress().toLowerCase(), "Die ownerAddress muss der Adresse des Creators entsprechen.");
+        assertNotNull(createdJob.ownerAddress(), "ownerAddress darf nicht null sein.");
+        assertEquals(testCredentials.getAddress().toLowerCase(), createdJob.ownerAddress().toLowerCase(), "Die ownerAddress muss der Adresse des Creators entsprechen.");
     }
 
     // --- NEUER TEST ---

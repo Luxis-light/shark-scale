@@ -1,6 +1,7 @@
 package offlinewallet;
 
 import offlineWallet.BalanceObserver;
+import offlineWallet.GetWallet;
 import offlineWallet.OfflineWallet;
 import offlineWallet.keystorefile.GenerateKeystorefile;
 import offlineWallet.keystorefile.IKeystoreReader;
@@ -59,9 +60,7 @@ class OfflineWalletTest {
     @DisplayName("Konstruktor sollte Exception bei null Credentials werfen")
     void constructor_shouldThrowExceptionForNullCredentials() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new OfflineWallet(null, mockKeystoreGenerator);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new OfflineWallet(null, mockKeystoreGenerator));
         assertEquals("Credentials cannot be null.", exception.getMessage());
     }
 
@@ -69,9 +68,7 @@ class OfflineWalletTest {
     @DisplayName("Konstruktor sollte Exception bei null KeystoreGenerator werfen")
     void constructor_shouldThrowExceptionForNullKeystoreGenerator() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new OfflineWallet(testCredentials, null);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> new OfflineWallet(testCredentials, null));
         assertEquals("KeystoreGenerator cannot be null.", exception.getMessage());
     }
 
@@ -101,11 +98,7 @@ class OfflineWalletTest {
         when(mockKeystoreReader.loadCredentials(wrongPassword, keystoreFile)).thenThrow(new CipherException("Falsches Passwort"));
 
         // Act & Assert
-        // Die Exception wird von der Methode gefangen und als leeres Optional interpretiert,
-        // daher prüfen wir, ob die aufrufende Methode die Exception korrekt wirft.
-        assertThrows(CipherException.class, () -> {
-            OfflineWallet.loadWalletFromKeystore(wrongPassword, keystoreFile, mockKeystoreReader, mockKeystoreGenerator);
-        });
+        assertThrows(CipherException.class, () -> OfflineWallet.loadWalletFromKeystore(wrongPassword, keystoreFile, mockKeystoreReader, mockKeystoreGenerator));
     }
 
     @Test
@@ -116,7 +109,6 @@ class OfflineWalletTest {
         wallet.addBalanceObserver(mockObserver);
 
         BigInteger newBalance = BigInteger.valueOf(1000);
-        // Mocken der Web3j-Aufrufkette
         Request mockRequest = mock(Request.class);
         EthGetBalance ethGetBalance = new EthGetBalance();
         ethGetBalance.setResult(Numeric.toHexStringWithPrefix(newBalance));
@@ -128,8 +120,8 @@ class OfflineWalletTest {
         wallet.fetchBalance(mockWeb3j);
 
         // Assert
-        // Überprüfen, ob updateBalance auf dem Observer genau einmal mit dem neuen Kontostand aufgerufen wurde
-        verify(mockObserver, times(1)).updateBalance(newBalance);
+
+        verify(mockObserver, times(1)).updateBalance(wallet, newBalance);
     }
 
     @Test
@@ -153,6 +145,7 @@ class OfflineWalletTest {
         Request secondMockRequest = mock(Request.class);
         EthGetBalance secondEthGetBalance = new EthGetBalance();
         secondEthGetBalance.setResult(Numeric.toHexStringWithPrefix(initialBalance));
+
         when(mockWeb3j.ethGetBalance(anyString(), any())).thenReturn(secondMockRequest);
         when(secondMockRequest.send()).thenReturn(secondEthGetBalance);
 
@@ -161,16 +154,15 @@ class OfflineWalletTest {
 
         // Assert
         // updateBalance darf nicht aufgerufen worden sein, da der Kontostand gleich geblieben ist
-        verify(mockObserver, never()).updateBalance(any());
+        verify(mockObserver, never()).updateBalance(any(GetWallet.class), any(BigInteger.class));
     }
-
     @Test
     @DisplayName("Ein entfernter Observer sollte nicht mehr benachrichtigt werden")
     void removedObserver_shouldNotBeNotified() throws IOException, ExecutionException, InterruptedException {
         // Arrange
         BalanceObserver mockObserver = mock(BalanceObserver.class);
         wallet.addBalanceObserver(mockObserver);
-        wallet.removeBalanceObserver(mockObserver); // <-- Observer wird sofort wieder entfernt
+        wallet.removeBalanceObserver(mockObserver);
 
         BigInteger newBalance = BigInteger.valueOf(2000);
         Request mockRequest = mock(Request.class);
@@ -183,6 +175,7 @@ class OfflineWalletTest {
         wallet.fetchBalance(mockWeb3j);
 
         // Assert
-        verify(mockObserver, never()).updateBalance(any());
+
+        verify(mockObserver, never()).updateBalance(any(GetWallet.class), any(BigInteger.class));
     }
 }

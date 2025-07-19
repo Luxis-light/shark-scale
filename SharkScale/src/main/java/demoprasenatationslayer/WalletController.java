@@ -13,6 +13,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import offlineTXCreator.OfflineTXCreator;
 import offlineWallet.BalanceObserver;
+import offlineWallet.GetWallet;
 import offlineWallet.OfflineWallet;
 import offlineWallet.keystorefile.GenerateKeystorefile;
 import offlineWallet.keystorefile.IKeystoreReader;
@@ -26,12 +27,12 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 public class WalletController implements BalanceObserver {
 
-    // FXML-Felder aus allen Tabs
-    @FXML
-    private TextField wallet1AddressField;
+    // Zentrale Verwaltung der Zustände
+    private final Map<String, OfflineTXCreator> txCreators = new HashMap<>();
     @FXML
     private TextField wallet1BalanceField;
     @FXML
@@ -52,7 +53,6 @@ public class WalletController implements BalanceObserver {
     private Button createTransactionButton;
     @FXML
     private Button closeSharkScaleButton;
-
     @FXML
     private Label statusLabel;
     @FXML
@@ -73,7 +73,9 @@ public class WalletController implements BalanceObserver {
     private OfflineTXCreator txCreator1;
     private OfflineTXCreator txCreator2;
     private OfflineTXCreator activeTxCreatorForTable;
-    private final Map<String, OfflineTXCreator> txCreators = new HashMap<>();
+    // FXML-Felder
+    @FXML
+    private TextField wallet1AddressField;
     private final List<OfflineTXCreator.TransactionJob> allPendingJobs = new ArrayList<>();
 
     @FXML
@@ -94,16 +96,19 @@ public class WalletController implements BalanceObserver {
             if (offlineWallet1Optional.isPresent() && offlineWallet2Optional.isPresent()) {
                 OfflineWallet wallet1 = offlineWallet1Optional.get();
                 OfflineWallet wallet2 = offlineWallet2Optional.get();
-                txCreators.put(wallet1.getHexadresse().toLowerCase(), txCreator1);
-                txCreators.put(wallet2.getHexadresse().toLowerCase(), txCreator2);
-                wallet1.addBalanceObserver(this);
-                wallet2.addBalanceObserver(this);
 
+                // 1. ERST die Instanzen erstellen
                 txCreator1 = new OfflineTXCreator(wallet1, web3j);
                 txCreator2 = new OfflineTXCreator(wallet2, web3j);
 
-                loadWallets();
+                // 2. DANN die Map befüllen
+                txCreators.put(wallet1.getHexadresse().toLowerCase(), txCreator1);
+                txCreators.put(wallet2.getHexadresse().toLowerCase(), txCreator2);
 
+                wallet1.addBalanceObserver(this);
+                wallet2.addBalanceObserver(this);
+
+                loadWallets();
                 setSenderComboBox();
                 recipientAddressField.setText("0x");
                 startBalancePollingService();
@@ -116,7 +121,6 @@ public class WalletController implements BalanceObserver {
             e.printStackTrace();
             disableControls(true);
         }
-
     }
 
     private void disableControls(boolean disable) {
@@ -145,6 +149,7 @@ public class WalletController implements BalanceObserver {
         TableColumn<OfflineTXCreator.TransactionJob, String> hashCol = new TableColumn<>("Signierter Hash (gekürzt)");
         hashCol.setCellValueFactory(cellData -> {
             String fullHash = cellData.getValue().signedHex();
+            if (fullHash == null || fullHash.length() < 20) return new SimpleStringProperty(fullHash);
             String shortHash = fullHash.substring(0, 10) + "..." + fullHash.substring(fullHash.length() - 8);
             return new SimpleStringProperty(shortHash);
         });
@@ -154,35 +159,25 @@ public class WalletController implements BalanceObserver {
     }
 
     @Override
-    public void updateBalance(BigInteger newBalance) {
+    public void updateBalance(GetWallet source, BigInteger newBalance) {
         Platform.runLater(() -> {
-            offlineWallet1Optional.ifPresent(wallet -> {
-                try {
-                    if (newBalance.equals(wallet.fetchBalance(web3j))) {
-                        wallet1BalanceField.setText(newBalance.toString());
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            offlineWallet2Optional.ifPresent(wallet -> {
-                try {
-                    if (newBalance.equals(wallet.fetchBalance(web3j))) {
-                        wallet2BalanceField.setText(newBalance.toString());
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            // Eindeutige Zuweisung basierend auf der Adresse der Quell-Wallet
+            if (source.getCredentials().getAddress().equalsIgnoreCase(txCreator1.getWalletAddress())) {
+                wallet1BalanceField.setText(newBalance.toString());
+            } else if (source.getCredentials().getAddress().equalsIgnoreCase(txCreator2.getWalletAddress())) {
+                wallet2BalanceField.setText(newBalance.toString());
+            }
         });
+    }
+
+    /**
+     * Zentraler Punkt zur Aktualisierung der globalen Job-Liste und der UI-Tabelle.
+     */
+    private void refreshUiWithJobs(List<OfflineTXCreator.TransactionJob> jobs) {
+        allPendingJobs.clear();
+        allPendingJobs.addAll(jobs);
+        transactionTableView.setItems(FXCollections.observableArrayList(allPendingJobs));
+        System.out.println("--- DEBUG: UI refreshed. allPendingJobs contains now " + allPendingJobs.size() + " jobs.");
     }
 
     private void startBalancePollingService() {
@@ -191,7 +186,7 @@ public class WalletController implements BalanceObserver {
             protected Task<Void> createTask() {
                 return new Task<>() {
                     @Override
-                    protected Void call() throws Exception {
+                    protected Void call() {
                         offlineWallet1Optional.ifPresent(wallet -> {
                             try {
                                 wallet.fetchBalance(web3j);
@@ -246,7 +241,7 @@ public class WalletController implements BalanceObserver {
                 recipientAddressField.clear();
                 recipientAddressField.setText("0x");
                 amountField.clear();
-                loadTransactionsFor(currentTxCreator);
+                refreshUiWithJobs(currentTxCreator.getPendingTransactionJobs());
             } else {
                 statusLabel.setText("Fehler beim Erstellen der Transaktion.");
             }
@@ -305,9 +300,8 @@ public class WalletController implements BalanceObserver {
 
     private void loadTransactionsFromWallet(OfflineTXCreator txCreator) {
         activeTxCreatorForTable = txCreator;
-        List<OfflineTXCreator.TransactionJob> jobs = txCreator.getPendingTransactionJobs();
-        transactionTableView.setItems(FXCollections.observableArrayList(jobs));
-        statusLabel.setText(jobs.size() + " Transaktion(en) aus dem Speicher geladen.");
+        refreshUiWithJobs(txCreator.getPendingTransactionJobs());
+        statusLabel.setText(allPendingJobs.size() + " Transaktion(en) aus dem Speicher geladen.");
     }
 
     private void loadTransactionsFromFile(OfflineTXCreator txCreator) {
@@ -319,7 +313,7 @@ public class WalletController implements BalanceObserver {
         if (selectedFile != null) {
             try {
                 txCreator.loadTransactionsFromJsonAndDelete(selectedFile.getAbsolutePath());
-                loadTransactionsFromWallet(txCreator);
+                refreshUiWithJobs(txCreator.getPendingTransactionJobs());
                 statusLabel.setText("Transaktionen aus " + selectedFile.getName() + " geladen.");
             } catch (IOException e) {
                 statusLabel.setText("Fehler beim Laden der Datei: " + e.getMessage());
@@ -344,64 +338,70 @@ public class WalletController implements BalanceObserver {
         });
     }
 
-    private void loadTransactionsFor(OfflineTXCreator txCreator) {
-        activeTxCreatorForTable = txCreator;
-        if (txCreator != null) {
-            List<OfflineTXCreator.TransactionJob> signedTransactions = txCreator.getPendingTransactionJobs();
-            transactionTableView.setItems(FXCollections.observableArrayList(signedTransactions));
-            statusLabel.setText(signedTransactions.size() + " Transaktion(en) geladen.");
-        }
-    }
-
     @FXML
-    void sendTransactionBatch() throws IOException, ExecutionException, InterruptedException {
-        System.out.println("Button 'Alle Transaktionen senden' geklickt.");
+    void sendTransactionBatch() {
+        System.out.println("\n--- DEBUG: Starting sendTransactionBatch ---");
 
         if (allPendingJobs.isEmpty()) {
             statusLabel.setText("Keine ausstehenden Transaktionen zum Senden vorhanden.");
+            System.out.println("--- DEBUG: No pending jobs found. Aborting. ---");
             return;
         }
 
-        List<String> successfulHashes = new ArrayList<>();
-        List<OfflineTXCreator.TransactionJob> failedJobs = new ArrayList<>();
+        System.out.println("--- DEBUG: Found " + allPendingJobs.size() + " total jobs to process.");
 
-        // Kopie der Liste zur Iteration erstellen, um sie währenddessen zu modifizieren
-        List<OfflineTXCreator.TransactionJob> jobsToProcess = new ArrayList<>(allPendingJobs);
+        List<String> allSuccessfulHashes = new ArrayList<>();
+        List<OfflineTXCreator.TransactionJob> allFailedJobs = new ArrayList<>();
 
-        for (OfflineTXCreator.TransactionJob job : jobsToProcess) {
-            // Finde den richtigen Creator für diesen Job
-            OfflineTXCreator responsibleCreator = txCreators.get(job.ownerAdress().toLowerCase());
+        Map<String, List<OfflineTXCreator.TransactionJob>> jobsByOwner = allPendingJobs.stream()
+                .collect(Collectors.groupingBy(job -> job.ownerAddress().toLowerCase()));
+
+        System.out.println("--- DEBUG: Grouped jobs into " + jobsByOwner.size() + " batches by owner.");
+
+        for (Map.Entry<String, List<OfflineTXCreator.TransactionJob>> entry : jobsByOwner.entrySet()) {
+            String ownerAddress = entry.getKey();
+            List<OfflineTXCreator.TransactionJob> jobsForThisOwner = entry.getValue();
+            OfflineTXCreator responsibleCreator = txCreators.get(ownerAddress);
+
+            System.out.println("--- DEBUG: Processing batch for owner: " + ownerAddress + " with " + jobsForThisOwner.size() + " jobs.");
 
             if (responsibleCreator != null) {
                 try {
-                    // Eine neue Methode im Creator, die nur einen Job sendet
-                    // Wir simulieren das hier, indem wir die Batch-Logik mit einer Liste von einem Element füttern
-                    responsibleCreator.getPendingTransactionJobs().add(job); // Temporär hinzufügen
-                    ArrayList<String> resultHashes = responsibleCreator.sendBatch(); // sendBatch korrigiert jetzt nur diesen einen Job
-                    successfulHashes.addAll(resultHashes);
-                    allPendingJobs.remove(job); // Bei Erfolg aus der globalen Liste entfernen
+                    ArrayList<String> resultHashes = responsibleCreator.sendJobs(jobsForThisOwner);
+
+                    if (!resultHashes.isEmpty()) {
+                        allSuccessfulHashes.addAll(resultHashes);
+                        allPendingJobs.removeAll(jobsForThisOwner);
+                        System.out.println("--- DEBUG: Successfully removed " + jobsForThisOwner.size() + " jobs from the global list.");
+                    } else {
+                        System.out.println("--- DEBUG: sendJobs() returned an empty list, assuming failure for this batch.");
+                        allFailedJobs.addAll(jobsForThisOwner);
+                    }
                 } catch (Exception e) {
-                    failedJobs.add(job);
-                    System.err.println("Fehler beim Senden von Job mit Nonce " + job.nonce() + ": " + e.getMessage());
-                    // Wichtig: Den Job nicht aus der globalen Liste entfernen, damit er erneut versucht werden kann
+                    System.err.println("--- DEBUG: CRITICAL EXCEPTION caught while processing batch for " + ownerAddress + " ---");
+                    e.printStackTrace();
+                    allFailedJobs.addAll(jobsForThisOwner);
                 }
             } else {
-                failedJobs.add(job);
-                System.err.println("Kein passender Wallet-Creator für Transaktion von " + job.ownerAdress() + " gefunden.");
+                System.err.println("--- DEBUG: ERROR - No responsible creator found for address: " + ownerAddress);
+                allFailedJobs.addAll(jobsForThisOwner);
             }
         }
 
-        // UI aktualisieren
-        transactionTableView.setItems(FXCollections.observableArrayList(allPendingJobs));
-        statusLabel.setText(successfulHashes.size() + " Transaktion(en) erfolgreich gesendet. " + failedJobs.size() + " fehlgeschlagen.");
-        refreshBalances();
+        // UI final aktualisieren
+        refreshUiWithJobs(new ArrayList<>(allPendingJobs)); // Aktualisiere UI mit den verbleibenden (fehlgeschlagenen) Jobs
+        statusLabel.setText(allSuccessfulHashes.size() + " Transaktion(en) erfolgreich gesendet. " + allFailedJobs.size() + " fehlgeschlagen.");
+
+        try {
+            refreshBalances();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println("--- DEBUG: Finished sendTransactionBatch ---\n");
     }
 
     @FXML
     void saveTransactions() {
-        System.out.println("Button 'Als Datei Speichern' geklickt.");
-
-        // Dialog zur Auswahl der Wallet anzeigen
         showWalletSelectionDialog(txCreator -> {
             if (txCreator.getPendingTransactionJobs().isEmpty()) {
                 statusLabel.setText("Keine Transaktionen zum Speichern für diese Wallet vorhanden.");
@@ -416,14 +416,16 @@ public class WalletController implements BalanceObserver {
 
             if (file != null) {
                 try {
-                    // Die Methode in OfflineTXCreator speichert UND leert die Liste
-                    txCreator.saveAndClearTransactionsToJson(file.getParentFile(), file.getName());
-
-
-                    // Da die Liste im Creator jetzt leer ist, auch die Tabelle leeren
-                    transactionTableView.getItems().clear();
-                    activeTxCreatorForTable = null; // Es gibt keinen aktiven Creator mehr für die Tabelle
-
+                    boolean success = txCreator.saveAndClearTransactionsToJson(file.getParentFile(), file.getName());
+                    if (success) {
+                        statusLabel.setText("Transaktionen erfolgreich gespeichert.");
+                        // Da die Liste im Creator jetzt leer ist, auch die UI leeren
+                        if (txCreator == activeTxCreatorForTable) {
+                            refreshUiWithJobs(Collections.emptyList());
+                        }
+                    } else {
+                        statusLabel.setText("Fehler beim Speichern der Transaktionen.");
+                    }
                 } catch (IOException e) {
                     statusLabel.setText("Fehler beim Speichern der Datei: " + e.getMessage());
                     e.printStackTrace();

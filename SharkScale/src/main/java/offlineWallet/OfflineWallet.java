@@ -70,7 +70,8 @@ public class OfflineWallet implements GetWallet {
 
     private void notifyObservers() throws IOException, InterruptedException, ExecutionException {
         for (BalanceObserver observer : observers) {
-            observer.updateBalance(this.lastKnownBalance);
+
+            observer.updateBalance(this, this.lastKnownBalance);
         }
     }
 

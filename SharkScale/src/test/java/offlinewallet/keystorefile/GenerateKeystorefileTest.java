@@ -140,7 +140,7 @@ class GenerateKeystorefileTest {
                 eq(password),
                 eq(testCredentials.getEcKeyPair()),
                 eq(tempDir), // tempDir ist bereits File
-                eq(null) // <--- HIER KORRIGIERT: Erwartet null für den Dateinamen
+                eq(null)
         ))
                 .thenReturn(expectedFilePath);
 
