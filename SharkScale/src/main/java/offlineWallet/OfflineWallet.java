@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+/**
+ *
+ */
 public class OfflineWallet implements GetWallet {
 
 
@@ -58,7 +61,6 @@ public class OfflineWallet implements GetWallet {
     }
 
 
-    // NEU: Methoden zum Hinzufügen und Entfernen von Observern
     public void addBalanceObserver(BalanceObserver observer) {
         observers.add(observer);
     }

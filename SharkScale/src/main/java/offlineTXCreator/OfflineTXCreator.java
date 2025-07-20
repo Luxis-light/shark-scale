@@ -143,51 +143,46 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
 
     @Override
     public ArrayList<String> sendBatch() throws Exception {
-        System.out.println("-------> INSIDE OfflineTXCreator.sendBatch()");
         ArrayList<String> successfulHashes = new ArrayList<>();
         ArrayList<TransactionJob> jobsToProcess = new ArrayList<>(this.pendingTransactionJobs);
-
-        System.out.println("-------> Creator will process " + jobsToProcess.size() + " jobs.");
 
         while (!jobsToProcess.isEmpty()) {
             Iterator<TransactionJob> iterator = jobsToProcess.iterator();
             TransactionJob job = iterator.next();
-            iterator.remove();
-            System.out.println("-------> Processing job with nonce: " + job.nonce());
+            // WICHTIG: Den Job hier noch NICHT aus der Liste entfernen
 
             try {
-                System.out.println("-------> Calling sendSignedTransaction for nonce " + job.nonce());
                 String txHash = sendSignedTransaction(job.signedHex());
-                System.out.println("-------> Received txHash from node: " + txHash);
-
                 if (txHash != null && !txHash.isEmpty()) {
                     successfulHashes.add(txHash);
-                    System.out.println("-------> SUCCESS: Added hash to success list.");
                 } else {
-                    System.err.println("-------> ERROR: Received null or empty txHash from node!");
-                    // Wir werfen hier einen Fehler, damit der Controller es als Fehlschlag wertet
-                    throw new Exception("Transaction sent but node returned null/empty hash for nonce " + job.nonce());
+                    throw new IOException("Transaction sent but node returned null/empty hash for nonce " + job.nonce());
                 }
+                // Job erst nach Erfolg entfernen
+                iterator.remove();
 
             } catch (RuntimeException e) {
-                System.err.println("-------> RUNTIME EXCEPTION caught in sendBatch for nonce " + job.nonce());
-                e.printStackTrace();
-
                 if (isNonceError(e)) {
-                    // ... die Korrekturlogik bleibt bestehen
-                    System.err.println("-------> It was a nonce error. Attempting correction...");
-                    // ...
+                    System.err.println("Nonce-Fehler bei Nonce " + job.nonce() + " erkannt. Starte Korrekturprozess...");
+
+                    // --- HIER IST DIE KORREKTUR ---
+                    // 1. Sammle alle verbleibenden Jobs (den aktuellen und die folgenden)
+                    ArrayList<TransactionJob> remainingJobs = new ArrayList<>();
+                    remainingJobs.add(job); // Füge den fehlgeschlagenen Job hinzu
+                    iterator.forEachRemaining(remainingJobs::add); // Füge alle nachfolgenden Jobs hinzu
+
+                    // 2. Rufe die Korrekturmethode auf und ersetze den aktuellen Stapel
+                    jobsToProcess = correctAndRecreateJobs(remainingJobs, job.nonce());
+
+                    System.out.println("Korrektur abgeschlossen. Setze Sendevorgang mit " + jobsToProcess.size() + " korrigierten Transaktionen fort...");
+                    // Der while-Loop wird nun mit den neuen, korrigierten Jobs fortgesetzt
+
                 } else {
+                    // Bei einem anderen Runtime-Fehler abbrechen
                     throw new Exception("Nicht behebbarer Fehler im Batch bei Nonce " + job.nonce() + ": " + e.getMessage(), e);
                 }
-            } catch (Exception ex) {
-                System.err.println("-------> CHECKED EXCEPTION caught in sendBatch for nonce " + job.nonce());
-                ex.printStackTrace();
-                // Leite die Exception weiter, damit der Controller sie sieht
-                throw ex;
             }
         }
-        System.out.println("-------> Finished sendBatch. Returning " + successfulHashes.size() + " hashes.");
         return successfulHashes;
     }
 

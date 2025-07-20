@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 /**
- *
+ * Das ITXCreator-Interface definiert Methoden zum Erstellen, Signieren, Speichern und Laden von
+ * Blockchain-Transaktionen. Es ermöglicht die Offline-Erstellung und Verwaltung von Transaktionen,
+ * die später an ein Netzwerk gesendet werden können.
  */
 public interface ITXCreator {
 
@@ -27,7 +29,7 @@ public interface ITXCreator {
 	 * und speichert die signierte Transaktion intern in der Liste.
 	 * Zudem darf man manuel den nonce wählen
 	 *
-	 * @param nonce
+	 * @param nonce    Der nonce für die Transaktion.
 	 * @param gasPrice Der Gaspreis für die Transaktion (in Wei).
 	 * @param gasLimit Das Gaslimit für die Transaktion.
 	 * @param to       Die Empfängeradresse.

@@ -3,7 +3,7 @@ package offlineTXCreator;
 import java.util.ArrayList;
 
 /**
- *
+ * Dieses Interface definiert die notwendigen Methoden für eine Netzwerkverbindung, um Transaktionen an ein Blockchain-Netzwerk zu senden.
  */
 public interface INetworkConnection {
 

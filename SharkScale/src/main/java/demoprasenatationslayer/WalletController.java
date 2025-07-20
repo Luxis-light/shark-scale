@@ -403,6 +403,7 @@ public class WalletController implements BalanceObserver {
     @FXML
     void saveTransactions() {
         showWalletSelectionDialog(txCreator -> {
+            // Die interne Liste des ausgewählten Creators wird geprüft
             if (txCreator.getPendingTransactionJobs().isEmpty()) {
                 statusLabel.setText("Keine Transaktionen zum Speichern für diese Wallet vorhanden.");
                 return;
@@ -416,13 +417,22 @@ public class WalletController implements BalanceObserver {
 
             if (file != null) {
                 try {
+                    // Diese Methode leert die INTERNE Liste des txCreator
                     boolean success = txCreator.saveAndClearTransactionsToJson(file.getParentFile(), file.getName());
                     if (success) {
                         statusLabel.setText("Transaktionen erfolgreich gespeichert.");
-                        // Da die Liste im Creator jetzt leer ist, auch die UI leeren
-                        if (txCreator == activeTxCreatorForTable) {
-                            refreshUiWithJobs(Collections.emptyList());
-                        }
+
+                        // --- KORREKTUR: Synchronisiere den globalen Zustand neu ---
+                        // Baue die zentrale Job-Liste aus den aktuellen Zuständen ALLER Creators neu auf.
+                        // Da der gerade gespeicherte Creator jetzt eine leere Liste hat,
+                        // wird der globale Zustand korrekt aktualisiert.
+                        List<OfflineTXCreator.TransactionJob> updatedJobs = new ArrayList<>();
+                        if (txCreator1 != null) updatedJobs.addAll(txCreator1.getPendingTransactionJobs());
+                        if (txCreator2 != null) updatedJobs.addAll(txCreator2.getPendingTransactionJobs());
+
+                        // Aktualisiere die UI mit der neu synchronisierten, zentralen Liste
+                        refreshUiWithJobs(updatedJobs);
+
                     } else {
                         statusLabel.setText("Fehler beim Speichern der Transaktionen.");
                     }
