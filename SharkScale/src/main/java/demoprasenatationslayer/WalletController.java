@@ -372,6 +372,7 @@ public class WalletController implements BalanceObserver {
                     if (!resultHashes.isEmpty()) {
                         allSuccessfulHashes.addAll(resultHashes);
                         allPendingJobs.removeAll(jobsForThisOwner);
+                        responsibleCreator.clearPendingJobs();
                         System.out.println("--- DEBUG: Successfully removed " + jobsForThisOwner.size() + " jobs from the global list.");
                     } else {
                         System.out.println("--- DEBUG: sendJobs() returned an empty list, assuming failure for this batch.");

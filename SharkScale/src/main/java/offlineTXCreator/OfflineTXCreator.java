@@ -257,13 +257,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         System.out.println("Nonce synchronisiert für " + this.walletAddress + ". Neue Nonce: " + this.currentNonce);
     }
 
-    /**
-     * Sendet eine einzelne, bereits signierte Transaktion an das Ethereum-Netzwerk.
-     *
-     * @param signedTransactionData Die signierte Transaktion als Hex-String (beginnend mit "0x").
-     * @return Der Transaktions-Hash bei erfolgreichem Versand.
-     * @throws Exception Wenn der Knoten einen Fehler zurückgibt.
-     */
+    @Override
     public String sendSignedTransaction(String signedTransactionData) throws Exception {
         EthSendTransaction ethSendTransaction = web3j.ethSendRawTransaction(signedTransactionData).send();
         if (ethSendTransaction.hasError()) {

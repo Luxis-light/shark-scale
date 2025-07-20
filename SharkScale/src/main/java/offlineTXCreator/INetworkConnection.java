@@ -24,4 +24,13 @@ public interface INetworkConnection {
      *                   der den gesamten Vorgang verhindert (z.B. keine Netzwerkverbindung).
      */
     ArrayList<String> sendBatch() throws Exception;
+
+    /**
+     * Sendet eine einzelne, bereits signierte Transaktion an das Ethereum-Netzwerk.
+     *
+     * @param signedTransactionData Die signierte Transaktion als Hex-String.
+     * @return Der Transaktions-Hash bei erfolgreichem Versand.
+     * @throws Exception Wenn der Knoten einen Fehler zurückgibt.
+     */
+    String sendSignedTransaction(String signedTransactionData) throws Exception;
 }
