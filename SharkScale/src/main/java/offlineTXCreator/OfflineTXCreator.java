@@ -149,7 +149,7 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
         while (!jobsToProcess.isEmpty()) {
             Iterator<TransactionJob> iterator = jobsToProcess.iterator();
             TransactionJob job = iterator.next();
-            // WICHTIG: Den Job hier noch NICHT aus der Liste entfernen
+
 
             try {
                 String txHash = sendSignedTransaction(job.signedHex());
@@ -158,27 +158,26 @@ public class OfflineTXCreator implements INetworkConnection, ITXCreator {
                 } else {
                     throw new IOException("Transaction sent but node returned null/empty hash for nonce " + job.nonce());
                 }
-                // Job erst nach Erfolg entfernen
+
                 iterator.remove();
 
             } catch (RuntimeException e) {
                 if (isNonceError(e)) {
                     System.err.println("Nonce-Fehler bei Nonce " + job.nonce() + " erkannt. Starte Korrekturprozess...");
 
-                    // --- HIER IST DIE KORREKTUR ---
-                    // 1. Sammle alle verbleibenden Jobs (den aktuellen und die folgenden)
-                    ArrayList<TransactionJob> remainingJobs = new ArrayList<>();
-                    remainingJobs.add(job); // Füge den fehlgeschlagenen Job hinzu
-                    iterator.forEachRemaining(remainingJobs::add); // Füge alle nachfolgenden Jobs hinzu
 
-                    // 2. Rufe die Korrekturmethode auf und ersetze den aktuellen Stapel
+                    ArrayList<TransactionJob> remainingJobs = new ArrayList<>();
+                    remainingJobs.add(job);
+                    iterator.forEachRemaining(remainingJobs::add);
+
+
                     jobsToProcess = correctAndRecreateJobs(remainingJobs, job.nonce());
 
                     System.out.println("Korrektur abgeschlossen. Setze Sendevorgang mit " + jobsToProcess.size() + " korrigierten Transaktionen fort...");
-                    // Der while-Loop wird nun mit den neuen, korrigierten Jobs fortgesetzt
+
 
                 } else {
-                    // Bei einem anderen Runtime-Fehler abbrechen
+
                     throw new Exception("Nicht behebbarer Fehler im Batch bei Nonce " + job.nonce() + ": " + e.getMessage(), e);
                 }
             }
