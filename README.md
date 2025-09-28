@@ -4,7 +4,7 @@ Dies ist ein Prototyp einer **Offline Wallet** mit der Fähigkeit, Transaktionen
 
 ## Kernidee
 
-Die Hauptidee ist es, einen Air-Gap zwischen dem privaten Schlüssel und der Online-Welt zu schaffen. Die Offline Wallet speichert Ihre privaten/öffentlichen Schlüssel und die digital signierten Transaktionen. Diese signierten Transaktionen werden lokal vorgehalten und erst bei Bedarf – durch eine explizite externe Anweisung und bei Verfügbarkeit einer Netzwerkverbindung – an die Blockchain übermittelt.
+Die Hauptidee ist es, zwischen dem privaten Schlüssel und der Online-Welt  eine isolation zu schaffen. Die Offline Wallet speichert Ihre privaten/öffentlichen Schlüssel und die digital signierten Transaktionen. Diese signierten Transaktionen werden lokal vorgehalten und erst bei Bedarf – durch eine explizite externe Anweisung und bei Verfügbarkeit einer Netzwerkverbindung – an die Blockchain übermittelt.
 
 ## Funktionen
 
